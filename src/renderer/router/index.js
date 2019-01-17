@@ -6,7 +6,7 @@ Vue.use(Router)
 export const constantRouterMap = [
   {
     path: '/',
-    name: 'index',
+    name: 'home',
     component: () => import('@/views/home')
   },
   {

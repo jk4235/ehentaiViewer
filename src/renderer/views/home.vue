@@ -4,27 +4,37 @@
             <div class="typeSelect">
                 <el-tag
                     v-for="(v, k) in types"
+                    :key="k"
                     @click.native="toggleSelect(k)"
                     :type="v ? 'default' : 'info'">{{ k }}</el-tag>
             </div>
             <el-row type="flex" justify="space-between">
                 <el-col :span="17">
                     <div>
-                        <el-input placeholder="Search Keywords"></el-input>
+                        <el-input placeholder="Search Keywords" v-model="searchKeyWords"></el-input>
                     </div>
                 </el-col>
                 <el-col :span="6">
                     <div style="display: flex; justify-content: space-between">
-                        <el-button class="searchBtn">搜索</el-button>
-                        <el-button class="searchBtn">清除</el-button>
+                        <el-button class="searchBtn" type="primary" @click="searchBooks">搜索</el-button>
+                        <el-button class="searchBtn" type="danger">清除</el-button>
                     </div>
                 </el-col>
             </el-row>
         </el-header>
-        <el-main style="padding-top: 0">
-            <el-card shadow="hover" v-for="book in books">
+        <el-main style="padding-top: 0" v-loading="loading">
+            <el-card shadow="hover" v-for="book in books" :key="book.title">
                 <div class="cover"><img :src="book.cover"></div>
-                <a :href="book.detailLink">{{ book.detailLink }}</a>
+                <div class="bookInfo">
+                    <div class="bookTitle">{{ book.title }}</div>
+                    <div class="uploader">{{ book.uploader }}</div>
+                    <div class="rate"><el-rate
+                            v-model="book.rate"
+                            disabled
+                            text-color="#ff9900">
+                    </el-rate></div>
+                    <div class="type"><el-tag>{{ book.type.toUpperCase() }}</el-tag></div>
+                </div>
             </el-card>
         </el-main>
     </el-container>
@@ -42,7 +52,7 @@ export default {
         'DOUJINSHI': 1,
         'MANGA': 1,
         'ARTIST CG': 0,
-        'GAME CS': 0,
+        'GAME CG': 0,
         'WESTERN': 0,
         'NON-H': 0,
         'IMAGE SET': 0,
@@ -50,28 +60,42 @@ export default {
         'ASIAN PORN': 0,
         'MISC': 0
       },
-      books: []
+      books: [],
+      searchKeyWords: null,
+      loading: false
     }
   },
   methods: {
     init () {
+      this.loading = true
       getInitData().then(res => {
+        this.books = []
         this.parseHtml(res)
-      })
+        this.loading = false
+      }).catch(() => { this.loading = false })
     },
     parseHtml (html) {
       const $ = cheerio.load(html)
       $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
         const detailLink = $(cv).find('.it5 > a').prop('href')
         let cover = null
-        if ($(cv).find('.it2').find('img').length) {
-          cover = $(cv).find('.it2').find('img').prop('src')
+        let title = $(cv).find('.it5 > a').text()
+        const coverEl = $(cv).find('.it2 img')
+        if (coverEl.length) {
+          cover = coverEl.prop('src')
         } else {
           cover = this.getCover($(cv).find('.it2').text())
         }
+        const type = $(cv).find('.itdc img').prop('alt')
+        const rate = this.countRate($(cv).find('.ir').attr('style'))
+        const uploader = $(cv).find('.itu a').text()
         this.books.push({
           detailLink,
-          cover
+          cover,
+          title,
+          type,
+          rate,
+          uploader
         })
       })
     },
@@ -81,6 +105,21 @@ export default {
     getCover (str) {
       const a = str.split('~', 4)
       return a[0] === 'init' ? `http://${a[1]}/${a[2]}` : `https://${a[1]}/${a[2]}`
+    },
+    countRate (rateStr) {
+      let rate = 5
+      const [num1, num2] = rateStr.split(';')[0].slice(20).split(' ').map(cv => cv.replace('px', ''))
+      rate = rate + Number(num1) / 16
+      if (num2 === '-21') {
+        rate--
+        rate += 0.5
+      }
+      return rate
+    },
+    searchBooks () {
+      if (!this.searchKeyWords) {
+        this.init()
+      }
     }
   },
   mounted () {
@@ -90,7 +129,7 @@ export default {
 </script>
 
 <style scoped>
-.typeSelect{
+.typeSelect {
     margin: auto;
     display: flex;
     flex-wrap: wrap;
@@ -98,19 +137,51 @@ export default {
     align-content: space-around;
     height: 75px;
 }
-.searchBtn{
+.searchBtn {
     padding: 10px;
 }
-.cover{
+.el-card {
+    display: flex;
+    justify-items: center;
+    margin: 5px 0 5px 0;
+}
+.cover {
     border:2px solid;
     height:133px;
     width:100px;
     display: flex;
     justify-content: center;
     align-items: center;
+    float: left;
 }
 .cover > img {
     width: 100%;
     max-height: 100%;
+}
+.bookInfo {
+    display: flex;
+    flex-direction: column;
+    height: 133px;
+    margin-left: 120px;
+}
+.bookTitle {
+    ext-overflow: -o-ellipsis-lastline;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    color: #303133;
+}
+.uploader {
+    color: #909399;
+    margin-top: 5px;
+}
+/*.type {*/
+    /*margin-top: 5%;*/
+/*}*/
+.rate {
+    margin-top: 5px;
+    flex-grow: 2;
 }
 </style>
