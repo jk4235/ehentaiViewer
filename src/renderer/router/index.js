@@ -1,13 +1,21 @@
 import Vue from 'vue'
 import Router from 'vue-router'
+import layout from '@/components/layout'
 
 Vue.use(Router)
 
 export const constantRouterMap = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('@/views/home')
+    name: 'Home',
+    redirect: '/home',
+    component: layout,
+    children: [
+      {
+        path: 'home',
+        component: () => import('@/views/home')
+      }
+    ]
   },
   {
     path: '*',
@@ -16,7 +24,7 @@ export const constantRouterMap = [
 ]
 
 export default new Router({
-  mode: 'history',
+  // mode: 'history',
   scrollBehavior: () => ({ y: 0 }),
   routes: constantRouterMap
 })

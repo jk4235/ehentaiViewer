@@ -11,17 +11,24 @@
             <el-row type="flex" justify="space-between">
                 <el-col :span="17">
                     <div>
-                        <el-input placeholder="Search Keywords" v-model="searchKeyWords"></el-input>
+                        <el-input
+                                placeholder="Search Keywords"
+                                @keyup.enter.native="searchBooks(true)"
+                                v-model="searchKeyWords"></el-input>
                     </div>
                 </el-col>
                 <el-col :span="6">
                     <div style="display: flex; justify-content: space-between">
-                        <el-button class="searchBtn" type="primary" @click="searchBooks">搜索</el-button>
-                        <el-button class="searchBtn" type="danger">清除</el-button>
+                        <el-button class="searchBtn" type="primary" @click="searchBooks(true)">搜索</el-button>
+                        <el-button class="searchBtn" type="danger" @click="init">清除</el-button>
                     </div>
                 </el-col>
             </el-row>
         </el-header>
+        <el-scrollbar
+                :native="false"
+                ref="mainScrollbar"
+                style="height: 700px">
         <el-main style="padding-top: 0" v-loading="loading">
             <el-card shadow="hover" v-for="book in books" :key="book.title">
                 <div class="cover"><img :src="book.cover"></div>
@@ -33,10 +40,14 @@
                             disabled
                             text-color="#ff9900">
                     </el-rate></div>
-                    <div class="type"><el-tag>{{ book.type.toUpperCase() }}</el-tag></div>
+                    <div class="type">
+                        <el-tag>{{ book.type.toUpperCase() }}</el-tag>
+                        <span class="uploadTime">{{ book.uploadTime }}</span>
+                    </div>
                 </div>
             </el-card>
         </el-main>
+        </el-scrollbar>
     </el-container>
 </template>
 
@@ -61,18 +72,25 @@ export default {
         'MISC': 0
       },
       books: [],
-      searchKeyWords: null,
-      loading: false
+      searchKeyWords: 'chinese',
+      loading: false,
+      scrollBar: null,
+      currentPage: 1
     }
   },
   methods: {
     init () {
-      this.loading = true
-      getInitData().then(res => {
-        this.books = []
-        this.parseHtml(res)
-        this.loading = false
-      }).catch(() => { this.loading = false })
+      for (const k in this.types) {
+        if (k === 'DOUJINSHI' || k === 'MANGA') {
+          this.types[k] = 1
+        } else {
+          this.types[k] = 0
+        }
+      }
+      this.currentPage = 1
+      this.searchKeyWords = 'chinese'
+      this.books = []
+      this.searchBooks()
     },
     parseHtml (html) {
       const $ = cheerio.load(html)
@@ -89,13 +107,15 @@ export default {
         const type = $(cv).find('.itdc img').prop('alt')
         const rate = this.countRate($(cv).find('.ir').attr('style'))
         const uploader = $(cv).find('.itu a').text()
+        const uploadTime = $(cv).find('.itd').eq(0).text()
         this.books.push({
           detailLink,
           cover,
           title,
           type,
           rate,
-          uploader
+          uploader,
+          uploadTime
         })
       })
     },
@@ -116,17 +136,63 @@ export default {
       }
       return rate
     },
-    searchBooks () {
-      if (!this.searchKeyWords) {
-        this.init()
+    searchBooks (isInit = false) {
+      this.loading = true
+      const queryParams = this.buildSearchParams()
+      if (isInit) {
+        this.books = []
+        this.currentPage = 1
+      }
+      getInitData(queryParams).then(res => {
+        this.parseHtml(res)
+      }).finally(() => { this.loading = false })
+    },
+    buildSearchParams () {
+      const queryParams = Object.entries(this.types).map(cv => {
+        cv[0] = `f_${cv[0].replace(/\s/g, '').toLowerCase()}`
+        return cv
+      })
+      if (this.searchKeyWords) {
+        this.searchKeyWords = this.searchKeyWords.trim().replace(/\s+/g, ' ')
+        queryParams.push(['f_search', this.searchKeyWords])
+      } else {
+        queryParams.push(['f_search', ''])
+      }
+      queryParams.push(['f_apply', 'Apply Filter'])
+      if (this.currentPage !== 1) {
+        queryParams.push(['page', this.currentPage])
+      }
+      return queryParams.reduce((prev, curr) => {
+        prev[curr[0]] = curr[1]
+        return prev
+      }, {})
+    },
+    handleScroll () {
+      let isScollToBottom = false
+      const { scrollHeight, scrollTop, clientHeight } = this.scrollBar
+      isScollToBottom = scrollHeight - scrollTop === clientHeight
+      if (isScollToBottom) {
+        this.currentPage++
+        this.searchBooks()
+        this.$refs.mainScrollbar.update()
       }
     }
   },
   mounted () {
     this.init()
+    this.scrollBar = this.$refs.mainScrollbar.$el.querySelector('.el-scrollbar__wrap')
+    this.scrollBar.addEventListener('scroll', this.handleScroll)
+  },
+  beforeDestroy () {
+    this.scrollBar.removeEventListener('scroll', this.handleScroll)
   }
 }
 </script>
+<style>
+.el-scrollbar__wrap {
+    overflow-x: hidden;
+}
+</style>
 
 <style scoped>
 .typeSelect {
@@ -177,9 +243,15 @@ export default {
     color: #909399;
     margin-top: 5px;
 }
-/*.type {*/
-    /*margin-top: 5%;*/
-/*}*/
+.uploadTime {
+    color: #909399;
+    float: right;
+}
+.type {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+}
 .rate {
     margin-top: 5px;
     flex-grow: 2;
