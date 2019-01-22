@@ -1,6 +1,6 @@
 import request from '@/utils/request'
 
-export function getInitData (params) {
+export function getListData (params) {
   return request({
     url: '/',
     headers: {
@@ -8,5 +8,14 @@ export function getInitData (params) {
     },
     method: 'get',
     params
+  })
+}
+export function getGalleryInfo (link) {
+  return request({
+    url: link,
+    headers: {
+      'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8'
+    },
+    method: 'get'
   })
 }

@@ -29,8 +29,8 @@
                 :native="false"
                 ref="mainScrollbar"
                 style="height: 700px">
-        <el-main style="padding-top: 0" v-loading="loading">
-            <el-card shadow="hover" v-for="book in books" :key="book.title">
+        <el-main style="padding-top: 0; min-height: 680px" v-loading="loading">
+            <el-card shadow="hover" v-for="book in books" :key="book.cover" @click.native="handleClick(book)">
                 <div class="cover"><img :src="book.cover"></div>
                 <div class="bookInfo">
                     <div class="bookTitle">{{ book.title }}</div>
@@ -52,7 +52,7 @@
 </template>
 
 <script>
-import { getInitData } from '../api/ehentai'
+import { getListData } from '../api/ehentai'
 import cheerio from 'cheerio'
 
 export default {
@@ -95,7 +95,7 @@ export default {
     parseHtml (html) {
       const $ = cheerio.load(html)
       $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
-        const detailLink = $(cv).find('.it5 > a').prop('href')
+        const detailLink = $(cv).find('.it5 > a').prop('href').split('.org')[1]
         let cover = null
         let title = $(cv).find('.it5 > a').text()
         const coverEl = $(cv).find('.it2 img')
@@ -143,7 +143,7 @@ export default {
         this.books = []
         this.currentPage = 1
       }
-      getInitData(queryParams).then(res => {
+      getListData(queryParams).then(res => {
         this.parseHtml(res)
       }).finally(() => { this.loading = false })
     },
@@ -176,6 +176,10 @@ export default {
         this.searchBooks()
         this.$refs.mainScrollbar.update()
       }
+    },
+    handleClick (book) {
+      this.$store.dispatch('UpdateBookInfo', book)
+      this.$router.push('/gallery/index')
     }
   },
   mounted () {
@@ -185,6 +189,13 @@ export default {
   },
   beforeDestroy () {
     this.scrollBar.removeEventListener('scroll', this.handleScroll)
+  },
+  beforeRouteLeave (to, from, next) {
+    this.$store.dispatch('UpdateScrollTop', this.scrollBar.scrollTop)
+    next()
+  },
+  activated () {
+    this.scrollBar.scrollTo(0, this.$store.state.home.scrollTop)
   }
 }
 </script>

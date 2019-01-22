@@ -13,7 +13,20 @@ export const constantRouterMap = [
     children: [
       {
         path: 'home',
-        component: () => import('@/views/home')
+        component: () => import('@/views/home'),
+        meta: {keepAlive: true}
+      }
+    ]
+  },
+  {
+    path: '/gallery',
+    name: 'gallery',
+    component: layout,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/gallery'),
+        meta: {keepAlive: true}
       }
     ]
   },

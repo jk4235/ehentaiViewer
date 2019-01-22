@@ -1,5 +1,4 @@
 const getters = {
-  opened: state => state.sidebar.opened,
-  main: state => state.Counter.main
+  opened: state => state.sidebar.opened
 }
 export default getters
