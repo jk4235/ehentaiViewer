@@ -53,7 +53,7 @@
 
 <script>
 import { getListData } from '../api/ehentai'
-import cheerio from 'cheerio'
+import { parseHomeHtml } from '../utils/parseHtml'
 
 export default {
   name: 'home',
@@ -93,48 +93,11 @@ export default {
       this.searchBooks()
     },
     parseHtml (html) {
-      const $ = cheerio.load(html)
-      $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
-        const detailLink = $(cv).find('.it5 > a').prop('href').split('.org')[1]
-        let cover = null
-        let title = $(cv).find('.it5 > a').text()
-        const coverEl = $(cv).find('.it2 img')
-        if (coverEl.length) {
-          cover = coverEl.prop('src')
-        } else {
-          cover = this.getCover($(cv).find('.it2').text())
-        }
-        const type = $(cv).find('.itdc img').prop('alt')
-        const rate = this.countRate($(cv).find('.ir').attr('style'))
-        const uploader = $(cv).find('.itu a').text()
-        const uploadTime = $(cv).find('.itd').eq(0).text()
-        this.books.push({
-          detailLink,
-          cover,
-          title,
-          type,
-          rate,
-          uploader,
-          uploadTime
-        })
-      })
+      const books = parseHomeHtml(html)
+      this.books.push.apply(this.books, books)
     },
     toggleSelect (k) {
       this.types[k] = this.types[k] ? 0 : 1
-    },
-    getCover (str) {
-      const a = str.split('~', 4)
-      return a[0] === 'init' ? `http://${a[1]}/${a[2]}` : `https://${a[1]}/${a[2]}`
-    },
-    countRate (rateStr) {
-      let rate = 5
-      const [num1, num2] = rateStr.split(';')[0].slice(20).split(' ').map(cv => cv.replace('px', ''))
-      rate = rate + Number(num1) / 16
-      if (num2 === '-21') {
-        rate--
-        rate += 0.5
-      }
-      return rate
     },
     searchBooks (isInit = false) {
       this.loading = true

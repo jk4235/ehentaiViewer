@@ -26,7 +26,7 @@ export const constantRouterMap = [
       {
         path: 'index',
         component: () => import('@/views/gallery'),
-        meta: {keepAlive: true}
+        meta: {keepAlive: false}
       }
     ]
   },

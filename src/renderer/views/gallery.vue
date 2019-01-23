@@ -5,19 +5,22 @@
             <div class="cover">
                 <img :src="bookInfo.cover" alt="cover">
             </div>
-            <div class="bookInfo">
+            <div class="bookInfo" v-loading="detailLoading">
                 <el-form label-position="left" label-width="8vh">
                     <el-form-item label="Type">
                         <el-tag>{{ bookInfo.type.toUpperCase() }}</el-tag>
                     </el-form-item>
                     <el-form-item label="Language">
-                        <span class="uploader">{{ bookInfo.uploader }}</span>
+                        <span>{{ bookInfo.language }}</span>
                     </el-form-item>
                     <el-form-item label="Length">
-                        <span class="uploader">{{ bookInfo.uploader }}</span>
+                        <span>{{ bookInfo.length }}</span>
+                    </el-form-item>
+                    <el-form-item label="Favorited">
+                        <span>{{ bookInfo.favoriteCount }}<i class="fa fa-heart" style="color: #F56C6C"></i></span>
                     </el-form-item>
                     <el-form-item label="File Size">
-                        <span class="uploader">{{ bookInfo.uploader }}</span>
+                        <span class="uploader">{{ bookInfo.fileSize }}</span>
                     </el-form-item>
                     <el-form-item label="Uploader">
                         <span class="uploader">{{ bookInfo.uploader }}</span>
@@ -28,13 +31,19 @@
                 </el-form>
             </div>
         </div>
-        <div class="rate" style="display: flex; justify-content: center; margin-top: 10px">
+        <div class="rate"
+             v-loading="detailLoading"
+             style="display: flex; justify-content: center; margin-top: 10px; flex-direction: column">
             <el-rate
+                    style="display: flex; justify-content: center"
                     v-model="bookInfo.rate"
                     disabled
                     text-color="#ff9900">
             </el-rate>
-            <span style="color: #ff9900">{{ rateText[Math.ceil(bookInfo.rate * 2 + 0.5) - 1] }}</span>
+            <div style="display: flex; justify-content: center; margin-top: 5px">
+                <span style="color: #ff9900">{{ rateText[bookInfo.rate * 2] }}</span>
+                <span>{{ `(${rateDetailInfo.average}, ${rateDetailInfo.peopleCount})` }}</span>
+            </div>
         </div>
         <div style="margin-top: 10px">
             <el-button style="width: 100%" type="success">阅读</el-button>
@@ -44,6 +53,7 @@
 
 <script>
 import { getGalleryInfo } from '../api/ehentai'
+import { parseGalleryHtml } from '../utils/parseHtml'
 
 export default {
   name: 'gallery',
@@ -61,7 +71,12 @@ export default {
         '很棒',
         '好极了',
         '根本把持不住'
-      ]
+      ],
+      detailLoading: false,
+      rateDetailInfo: {
+        peopleCount: 0,
+        average: 0
+      }
     }
   },
   computed: {
@@ -71,10 +86,19 @@ export default {
   },
   methods: {
     getGalleryInfo () {
-      getGalleryInfo(this.link).then(res => {
-
-      })
+      this.detailLoading = true
+      getGalleryInfo(this.bookInfo.detailLink).then(res => {
+        parseGalleryHtml.call(this, res).then(res => {
+          const { bookDetailInfo, rateDetailInfo } = res
+          this.$store.dispatch('UpdateBookInfo', bookDetailInfo)
+          Object.assign(this.rateDetailInfo, rateDetailInfo)
+          this.detailLoading = false
+        })
+      }).catch(() => { this.detailLoading = false })
     }
+  },
+  mounted () {
+    this.getGalleryInfo()
   }
 }
 </script>
@@ -109,6 +133,6 @@ export default {
         margin-left: 20px;
     }
     .el-form-item {
-        margin-bottom: 10px;
+        margin-bottom: 5px;
     }
 </style>

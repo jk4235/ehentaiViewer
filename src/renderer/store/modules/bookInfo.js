@@ -6,7 +6,11 @@ const bookInfo = {
     type: '',
     rate: 0,
     uploader: '',
-    uploadTime: ''
+    uploadTime: '',
+    language: '',
+    fileSize: '',
+    length: '',
+    favoriteCount: '0'
   },
   mutations: {
     UPDATE_BOOKINFO: (state, bookInfo) => {

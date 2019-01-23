@@ -8,6 +8,8 @@ import store from './store'
 import Element from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 
+import 'font-awesome/scss/font-awesome.scss'
+
 if (!process.env.IS_WEB) Vue.use(require('vue-electron'))
 Vue.http = Vue.prototype.$http = axios
 Vue.config.productionTip = false
