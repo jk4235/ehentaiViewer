@@ -30,7 +30,7 @@
                 ref="mainScrollbar"
                 style="height: 700px">
         <el-main style="padding-top: 0; min-height: 680px" v-loading="loading">
-            <el-card shadow="hover" v-for="book in books" :key="book.cover" @click.native="handleClick(book)">
+            <el-card shadow="hover" v-for="(book, index) in books" :key="book.cover + index" @click.native="handleClick(book)">
                 <div class="cover"><img :src="book.cover"></div>
                 <div class="bookInfo">
                     <div class="bookTitle">{{ book.title }}</div>
@@ -53,7 +53,7 @@
 
 <script>
 import { getListData } from '../api/ehentai'
-import { parseHomeHtml } from '../utils/parseHtml'
+import { HomeHtmlParser } from '../utils/parseHtml'
 
 export default {
   name: 'home',
@@ -75,7 +75,8 @@ export default {
       searchKeyWords: 'chinese',
       loading: false,
       scrollBar: null,
-      currentPage: 1
+      currentPage: 0,
+      parser: new HomeHtmlParser()
     }
   },
   methods: {
@@ -87,13 +88,13 @@ export default {
           this.types[k] = 0
         }
       }
-      this.currentPage = 1
+      this.currentPage = 0
       this.searchKeyWords = 'chinese'
       this.books = []
       this.searchBooks()
     },
     parseHtml (html) {
-      const books = parseHomeHtml(html)
+      const books = this.parser.parseHtml(html)
       this.books.push.apply(this.books, books)
     },
     toggleSelect (k) {
@@ -101,11 +102,11 @@ export default {
     },
     searchBooks (isInit = false) {
       this.loading = true
-      const queryParams = this.buildSearchParams()
       if (isInit) {
         this.books = []
-        this.currentPage = 1
+        this.currentPage = 0
       }
+      const queryParams = this.buildSearchParams()
       getListData(queryParams).then(res => {
         this.parseHtml(res)
       }).finally(() => { this.loading = false })
@@ -122,7 +123,7 @@ export default {
         queryParams.push(['f_search', ''])
       }
       queryParams.push(['f_apply', 'Apply Filter'])
-      if (this.currentPage !== 1) {
+      if (this.currentPage !== 0) {
         queryParams.push(['page', this.currentPage])
       }
       return queryParams.reduce((prev, curr) => {
@@ -142,7 +143,7 @@ export default {
     },
     handleClick (book) {
       this.$store.dispatch('UpdateBookInfo', book)
-      this.$router.push('/gallery/index')
+      this.$router.push(`/gallery/index?link=${book.detailLink}`)
     }
   },
   mounted () {
@@ -162,11 +163,6 @@ export default {
   }
 }
 </script>
-<style>
-.el-scrollbar__wrap {
-    overflow-x: hidden;
-}
-</style>
 
 <style scoped>
 .typeSelect {

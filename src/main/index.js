@@ -23,12 +23,15 @@ function createWindow () {
    */
   mainWindow = new BrowserWindow({
     height: 890,
+    minHeight: 890,
     useContentSize: true,
     width: 500,
+    minWidth: 500,
     webPreferences: {webSecurity: !isDev}
   })
 
   mainWindow.loadURL(winURL)
+  mainWindow.setMenu(null)
 
   mainWindow.on('closed', () => {
     mainWindow = null

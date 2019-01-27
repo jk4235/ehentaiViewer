@@ -1,151 +1,233 @@
 import cheerio from 'cheerio'
-import { getGalleryInfo } from '../api/ehentai'
 
-function countRate (rateStr) {
-  let rate = 5
-  const [num1, num2] = rateStr.split(';')[0].slice(20).split(' ').map(cv => cv.replace('px', ''))
-  rate = rate + Number(num1) / 16
-  if (num2 === '-21') {
-    rate--
-    rate += 0.5
+class HtmlParser {
+  $ = null
+  load (html) {
+    this.$ = cheerio.load(html)
   }
-  return rate
 }
 
-function getCover (str) {
-  const a = str.split('~', 4)
-  return a[0] === 'init' ? `http://${a[1]}/${a[2]}` : `https://${a[1]}/${a[2]}`
-}
-
-export function parseHomeHtml (html) {
-  const $ = cheerio.load(html)
-  const books = []
-  $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
-    const detailLink = $(cv).find('.it5 > a').prop('href').split('.org')[1]
-    let cover = null
-    let title = $(cv).find('.it5 > a').text()
-    const coverEl = $(cv).find('.it2 img')
-    if (coverEl.length) {
-      cover = coverEl.prop('src')
-    } else {
-      cover = getCover($(cv).find('.it2').text())
+export class ReadHtmlParser extends HtmlParser {
+  parseHtml (html, page) {
+    this.load(html)
+    return this.parseReadHtml(page)
+  }
+  parseReadHtml (page) {
+    const $ = this.$
+    const picLink = $('#img').attr('src')
+    const currentPage = page
+    const prevPage = $('#prev').attr('href')
+    const nextPage = $('#next').attr('href')
+    const firstPage = $('#i4').find('a').eq(0).attr('href')
+    const lastPage = $('#i4').find('a').eq(3).attr('href')
+    console.log($('#loadfail').prop('onclick'))
+    const reloadUrl = currentPage + ReadHtmlParser.buildReloadUrl($('#loadfail').prop('onclick').split(' ')[1])
+    return {
+      picLink,
+      prevPage,
+      nextPage,
+      firstPage,
+      lastPage,
+      isFirstPage: prevPage === firstPage,
+      isLastPage: nextPage === lastPage,
+      reloadUrl
     }
-    const type = $(cv).find('.itdc img').prop('alt')
-    const rate = countRate($(cv).find('.ir').attr('style'))
-    const uploader = $(cv).find('.itu a').text()
-    const uploadTime = $(cv).find('.itd').eq(0).text()
-    books.push({
-      detailLink,
-      cover,
-      title,
-      type,
-      rate,
-      uploader,
-      uploadTime
-    })
-  })
-  return books
+  }
+  static buildReloadUrl (str) {
+    const param = str.match(/\d.*\d/)[0]
+    return `?nl=${param}`
+  }
 }
 
-export function parseGalleryHtml (html) {
-  return new Promise((resolve, reject) => {
-    const $ = cheerio.load(html)
+export class HomeHtmlParser extends HtmlParser {
+  parseHtml (html) {
+    this.load(html)
+    return this.parseHomeHtml()
+  }
+  parseHomeHtml () {
+    const $ = this.$
+    const books = []
+    $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
+      const detailLink = $(cv).find('.it5 > a').prop('href').split('.org')[1]
+      let cover = null
+      let title = $(cv).find('.it5 > a').text()
+      const coverEl = $(cv).find('.it2 img')
+      if (coverEl.length) {
+        cover = coverEl.prop('src')
+      } else {
+        cover = HomeHtmlParser.getCover($(cv).find('.it2').text())
+      }
+      const type = $(cv).find('.itdc img').prop('alt')
+      const rate = HomeHtmlParser.countRate($(cv).find('.ir').attr('style'))
+      const uploader = $(cv).find('.itu a').text()
+      const uploadTime = $(cv).find('.itd').eq(0).text()
+      books.push({
+        detailLink,
+        cover,
+        title,
+        type,
+        rate,
+        uploader,
+        uploadTime
+      })
+    })
+    return books
+  }
+  static countRate (rateStr) {
+    let rate = 5
+    const [num1, num2] = rateStr.split(';')[0].slice(20).split(' ').map(cv => cv.replace('px', ''))
+    rate = rate + Number(num1) / 16
+    if (num2 === '-21') {
+      rate--
+      rate += 0.5
+    }
+    return rate
+  }
+  static getCover (str) {
+    const a = str.split('~', 4)
+    return a[0] === 'init' ? `http://${a[1]}/${a[2]}` : `https://${a[1]}/${a[2]}`
+  }
+}
+
+export class GalleryHtmlParser extends HtmlParser {
+  parseHtml (html) {
+    this.load(html)
+    return this._getInfo()
+  }
+  _getInfo () {
     const offensiveString = '(And if you choose to ignore this warning, you lose all rights to complain about it.)'
     const piningString = 'This gallery is pining for the fjords.'
 
-    const isOffensive = $(`p:contains(${offensiveString})`).length > 0
-    const isPining = $(`p:contains(${piningString})`).length > 0
+    const isOffensive = this.$(`p:contains(${offensiveString})`).length > 0
+    const isPining = this.$(`p:contains(${piningString})`).length > 0
 
     if (isPining) {
-      this.$alert('本内容只对高级用户开放,将退回首页', '提示', {
-        confirmButtonText: '确定',
-        callback: () => {
-          this.$router.push('/home')
-        }
-      })
+      return { isPining }
     }
+
     if (isOffensive) {
-      const vNode = (function (h) {
-        /* eslint-disable */
-        return (
-          <div>
-            <p>可能包含令人不适的内容,是否继续?</p>
-            <el-checkbox ref="noMoreNotice">不再提醒</el-checkbox>
-          </div>
-        )
-        /* eslint-enable */
-      }.call(this, this.$createElement))
-      this.$confirm(vNode, '警告', {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }).then(() => {
-        const isNoMoreNotice = this.$refs.noMoreNotice.value
-        const viewLink = $('a:contains("View Gallery")').prop('href').split('.org')[1]
-        const ignoreLink = $('a:contains("Never Warn Me Again")').prop('href').split('.org')[1]
-        getGalleryInfo(isNoMoreNotice ? ignoreLink : viewLink).then(res => {
-          resolve(_parseGalleryHtml($.load(res)))
-        })
-      }).catch(() => {
-        this.$router.push('/home')
-      })
-    }
-
-    if (!isPining && !isOffensive) {
-      resolve(_parseGalleryHtml($))
-    }
-  })
-}
-
-function _parseGalleryHtml ($) {
-  const bookDetailInfo = parseDetailInfo($, $('#gdd'))
-  const rateDetailInfo = parseRateInfo($)
-  return {
-    bookDetailInfo,
-    rateDetailInfo
-  }
-}
-
-function findDetailText ($, el, keyword) {
-  return el.find('td').filter(
-    (i, cv) => $(cv).text() === `${keyword}:`
-  ).next().text().trim()
-}
-
-function parseDetailInfo ($, el) {
-  const language = findDetailText($, el, 'Language')
-  const fileSize = findDetailText($, el, 'File Size')
-  const length = findDetailText($, el, 'Length')
-  const favorited = findDetailText($, el, 'Favorited')
-  let favoriteCount = 0
-  switch (favorited) {
-    case 'Never':
-      favoriteCount = 0
-      break
-    case 'Once':
-      favoriteCount = 1
-      break
-    default:
-      const index = favorited.trim().indexOf(' ')
-      if (index === -1) {
-        favoriteCount = 0
-      } else {
-        favoriteCount = favorited.split(' ')[0]
+      const viewLink = this.$('a:contains("View Gallery")').prop('href').split('.org')[1]
+      const ignoreLink = this.$('a:contains("Never Warn Me Again")').prop('href').split('.org')[1]
+      return {
+        isOffensive,
+        viewLink,
+        ignoreLink
       }
-  }
-  return {
-    language,
-    fileSize,
-    length,
-    favoriteCount
-  }
-}
+    }
 
-function parseRateInfo ($) {
-  const peopleCount = $('#rating_count').text().trim()
-  const average = $('#rating_label').text().trim().split(' ')[1]
-  return {
-    peopleCount,
-    average
+    return this._parseGalleryHtml()
+  }
+  _parseGalleryHtml () {
+    const bookDetailInfo = this.parseDetailInfo(this.$('#gdd'))
+    const rateDetailInfo = this.parseRateInfo()
+    const tagGroupInfo = this.getGalleryTagGroup()
+    const previewInfo = this.parsePreview()
+    return {
+      bookDetailInfo,
+      rateDetailInfo,
+      tagGroupInfo,
+      previewInfo
+    }
+  }
+  findDetailText (el, keyword) {
+    return el.find('td').filter(
+      (i, cv) => this.$(cv).text() === `${keyword}:`
+    ).next().text().trim()
+  }
+  parseDetailInfo (el) {
+    const language = this.findDetailText(el, 'Language')
+    const fileSize = this.findDetailText(el, 'File Size')
+    const length = this.findDetailText(el, 'Length')
+    const favorited = this.findDetailText(el, 'Favorited')
+    let favoriteCount = 0
+    switch (favorited) {
+      case 'Never':
+        favoriteCount = 0
+        break
+      case 'Once':
+        favoriteCount = 1
+        break
+      default:
+        const index = favorited.trim().indexOf(' ')
+        if (index === -1) {
+          favoriteCount = 0
+        } else {
+          favoriteCount = favorited.split(' ')[0]
+        }
+    }
+    return {
+      language,
+      fileSize,
+      length,
+      favoriteCount
+    }
+  }
+  parseRateInfo () {
+    const peopleCount = this.$('#rating_count').text().trim()
+    const average = this.$('#rating_label').text().trim().split(' ')[1]
+    return {
+      peopleCount,
+      average
+    }
+  }
+  parseTagGroup (el) {
+    const group = {
+      groupName: null,
+      tagList: []
+    }
+    let nameSpace = this.$(el).find('td').eq(0).text()
+    nameSpace = nameSpace.substring(0, nameSpace.length - 1)
+    group.groupName = nameSpace
+    const tags = this.$(el).find('td').eq(1).children()
+    for (let i = 0, n = tags.length; i < n; i++) {
+      let tag = tags.eq(i).text()
+      const index = tag.indexOf('|')
+      if (index >= 0) {
+        tag = tag.substring(0, index).trim()
+      }
+      group.tagList.push(tag)
+    }
+    return group.tagList.length > 0 ? group : null
+  }
+  getGalleryTagGroup () {
+    const tagList = this.$('#taglist')
+    const tagGroups = tagList.find('tr')
+    const tagGroupList = []
+    for (let i = 0, n = tagGroups.length; i < n; i++) {
+      const group = this.parseTagGroup(tagGroups.eq(i))
+      if (group !== null) {
+        tagGroupList.push(group)
+      }
+    }
+    return tagGroupList
+  }
+  parsePreview () {
+    const $ = this.$
+    const pagesTitle = $('.ptt').prev().text()
+    const totalPages = pagesTitle.match(/f\s\d+/)[0].split(' ')[1]
+    const currentShowPages = pagesTitle.match(/-\s\d+/)[0].split(' ')[1]
+    const previewPicList = $('#gdt').children()
+    const previewPicLink = []
+    previewPicList.each((index, cv) => {
+      const picLink = $(cv).find('a').attr('href')
+      const largePicStyle = $(cv).children().first().attr('style')
+      let largePicUrl = null
+      if (largePicStyle) {
+        largePicUrl = largePicStyle.match(/http.*jpg/)[0]
+      }
+      if (picLink && largePicUrl) {
+        previewPicLink.push({
+          picLink,
+          largePicUrl
+        })
+      }
+    })
+    return {
+      totalPages,
+      prevInfo: {
+        currentShowPages,
+        previewPicLink
+      }
+    }
   }
 }

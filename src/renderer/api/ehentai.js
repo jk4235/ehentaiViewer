@@ -10,7 +10,7 @@ export function getListData (params) {
     params
   })
 }
-export function getGalleryInfo (link) {
+export function getHtml (link) {
   return request({
     url: link,
     headers: {

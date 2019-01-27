@@ -9,6 +9,7 @@ import Element from 'element-ui'
 import 'element-ui/lib/theme-chalk/index.css'
 
 import 'font-awesome/scss/font-awesome.scss'
+import '@/style/index.scss' // global css
 
 if (!process.env.IS_WEB) Vue.use(require('vue-electron'))
 Vue.http = Vue.prototype.$http = axios

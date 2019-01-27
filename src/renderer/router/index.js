@@ -31,6 +31,18 @@ export const constantRouterMap = [
     ]
   },
   {
+    path: '/read',
+    name: 'read',
+    component: layout,
+    children: [
+      {
+        path: 'index',
+        component: () => import('@/views/read'),
+        meta: {keepAlive: false}
+      }
+    ]
+  },
+  {
     path: '*',
     redirect: '/'
   }

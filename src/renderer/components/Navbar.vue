@@ -1,9 +1,10 @@
 <template>
-    <div>
+    <div v-if="!fullScreen">
         <el-menu class="navbar" mode="horizontal">
             <hamburger :toggle-click="toggleSideBar" :is-active="opened" class="hamburger-container"/>
             <h1 style="margin: 0">EhentaiViewer</h1>
-            <el-button type="primary" size="mini" @click="handleClick"><i class="el-icon-back"></i></el-button>
+            <el-button type="primary" size="mini" @click="toggleFullScreen" v-if="$route.path === '/read/index'"><i class="fa fa-expand"></i></el-button>
+            <el-button type="primary" size="mini" @click="handleClick"><i class="fa fa-home"></i></el-button>
         </el-menu>
         <sidebar/>
     </div>
@@ -21,12 +22,16 @@
     },
     computed: {
       ...mapGetters([
-        'opened'
+        'opened',
+        'fullScreen'
       ])
     },
     methods: {
       toggleSideBar () {
         this.$store.dispatch('ToggleSideBar')
+      },
+      toggleFullScreen () {
+        this.$store.dispatch('ToggleFullScreen')
       },
       handleClick () {
         this.$router.push('/home')
