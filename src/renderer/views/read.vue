@@ -1,8 +1,9 @@
 <template>
     <div>
+        <div style="position: absolute; top: 5vh; right: 10vw;z-index: 10"><i v-for="(slide, index) in virtualData.slides" :class="getLoadIconClass(slide)" :style="getLoadIconStyle(slide.status, index)"></i></div>
         <swiper :options="swiperOption" ref="mySwiper">
             <swiper-slide v-for="(slide, index) in virtualData.slides" :key="index" :style="imgContainerStyle" class="imgContainer">
-                <img :src="picLink[slide] ? picLink[slide].picLink : ''" class="page" :key="(new Date()).getTime()">
+                <img :src="picLink[slide.index] ? picLink[slide.index].picLink : ''" class="page" :key="(new Date()).getTime()" @load="picLoaded(slide)" @error="picLoadError(slide)">
             </swiper-slide>
             <div class="swiper-pagination" slot="pagination"></div>
             <div class="swiper-button-prev" slot="button-prev"></div>
@@ -51,7 +52,10 @@
             slides: (function () {
               const slides = []
               for (let i = 0; i < self.$route.query.total; i += 1) {
-                slides.push(i)
+                slides.push({
+                  index: i,
+                  status: 'loading'
+                })
               }
               return slides
             }()),
@@ -119,14 +123,24 @@
       },
       async reloadPic () {
         const index = this.activeIndex
+        this.virtualData.slides[this.currentVirtualDataIndex].status = 'loading'
         const info = await this.getPageInfo(this.picLink[index].reloadUrl)
         const { picLink, reloadUrl } = this.handlePageInfo(info)
         this.$set(this.picLink, index, { picLink, reloadUrl })
+      },
+      picLoaded (item) {
+        item.status = 'loaded'
+      },
+      picLoadError (item) {
+        item.status = 'error'
       }
     },
     computed: {
       swiper () {
         return this.$refs.mySwiper.swiper
+      },
+      showSlides () {
+        return this.virtualData.slides
       },
       mainWindow () {
         return this.$electron.remote.BrowserWindow.getAllWindows()[0]
@@ -145,6 +159,45 @@
       },
       activeIndex () {
         return this.swiper.activeIndex
+      },
+      currentVirtualDataIndex () {
+        const dataLength = this.virtualData.slides.length
+        const isArriveLast = this.virtualData.slides[dataLength - 1].index === Number(this.total) - 1
+        if (isArriveLast && this.total >= 13) {
+          return dataLength - (Number(this.total) - this.activeIndex)
+        } else if (isArriveLast) {
+          return this.activeIndex
+        } else {
+          return this.virtualData.slides.length - 7
+        }
+      },
+      getLoadIconStyle () {
+        return function (status, index) {
+          const colorMap = {
+            loading: '#409EFF',
+            loaded: '#67C23A',
+            error: '#F56C6C'
+          }
+          const isCurrent = index === this.currentVirtualDataIndex
+          return {
+            color: colorMap[status] || '#FFF',
+            'font-size': isCurrent ? '20px' : '1em'
+          }
+        }
+      },
+      getLoadIconClass () {
+        return function (slide) {
+          const { status, index } = slide
+          if (status === 'loading') {
+            return 'fa fa-circle-o-notch fa-spin'
+          } else if (status === 'loaded') {
+            return 'fa fa-check'
+          } else if (status === 'error' && !this.picLink[index]) {
+            return 'fa fa-circle-o-notch fa-spin'
+          } else {
+            return 'fa fa-warning'
+          }
+        }
       }
     },
     created () {
@@ -167,6 +220,15 @@
       isFullScreen: {
         handler: function (newVal) {
           this.mainWindow.setFullScreen(newVal)
+        }
+      },
+      showSlides: {
+        handler: function (newVal) {
+          newVal.forEach(cv => {
+            if (cv.status === 'error' && !this.picLink[cv.index]) {
+              cv.status = 'loading'
+            }
+          })
         }
       }
     },

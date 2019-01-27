@@ -20,7 +20,6 @@ export class ReadHtmlParser extends HtmlParser {
     const nextPage = $('#next').attr('href')
     const firstPage = $('#i4').find('a').eq(0).attr('href')
     const lastPage = $('#i4').find('a').eq(3).attr('href')
-    console.log($('#loadfail').prop('onclick'))
     const reloadUrl = currentPage + ReadHtmlParser.buildReloadUrl($('#loadfail').prop('onclick').split(' ')[1])
     return {
       picLink,
