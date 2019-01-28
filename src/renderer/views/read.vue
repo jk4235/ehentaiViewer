@@ -123,9 +123,13 @@
       },
       async reloadPic () {
         const index = this.activeIndex
+        if (!this.picLink[index]) {
+          this.$message.error('还未解析到当前页面,请稍等')
+          return false
+        }
         this.virtualData.slides[this.currentVirtualDataIndex].status = 'loading'
         const info = await this.getPageInfo(this.picLink[index].reloadUrl)
-        const { picLink, reloadUrl } = this.handlePageInfo(info)
+        const { picLink, reloadUrl } = info
         this.$set(this.picLink, index, { picLink, reloadUrl })
       },
       picLoaded (item) {

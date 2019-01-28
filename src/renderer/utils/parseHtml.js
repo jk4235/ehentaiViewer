@@ -28,7 +28,7 @@ export class ReadHtmlParser extends HtmlParser {
       firstPage,
       lastPage,
       isFirstPage: prevPage === firstPage,
-      isLastPage: nextPage === lastPage,
+      isLastPage: currentPage === lastPage,
       reloadUrl
     }
   }
