@@ -46,20 +46,22 @@ export class HomeHtmlParser extends HtmlParser {
   parseHomeHtml () {
     const $ = this.$
     const books = []
-    $('tr[class="gtr0"], tr[class="gtr1"]').each((index, cv) => {
-      const detailLink = $(cv).find('.it5 > a').prop('href').split('.org')[1]
+    $('table[class="itg glt"] tr:not(:first-child)').each((index, cv) => {
+      const link = $(cv).find('.gl3c a')
+      if (link.length === 0) return false
+      const detailLink = link.prop('href').split('.org')[1]
+      let title = $(cv).find('.gl3c a').text()
+      const coverEl = $(cv).find('.glthumb img')
       let cover = null
-      let title = $(cv).find('.it5 > a').text()
-      const coverEl = $(cv).find('.it2 img')
       if (coverEl.length) {
         cover = coverEl.prop('src')
       } else {
-        cover = HomeHtmlParser.getCover($(cv).find('.it2').text())
+        cover = HomeHtmlParser.getCover($(cv).find('.glthumb').text())
       }
-      const type = $(cv).find('.itdc img').prop('alt')
+      const type = $(cv).find('.gl1c div').text()
       const rate = HomeHtmlParser.countRate($(cv).find('.ir').attr('style'))
-      const uploader = $(cv).find('.itu a').text()
-      const uploadTime = $(cv).find('.itd').eq(0).text()
+      const uploader = $(cv).find('.gl4c a').text()
+      const uploadTime = $(cv).find('.gl2c div').eq(1).text()
       books.push({
         detailLink,
         cover,

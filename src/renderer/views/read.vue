@@ -68,7 +68,7 @@
         },
         picLink: [],
         nextPage: null,
-        isLastPage: true,
+        isLastPage: false,
         parseTask: null,
         contentHeight: this.$electron.remote.BrowserWindow.getAllWindows()[0].getContentSize()[1]
       }
@@ -98,15 +98,16 @@
       },
       async startPicSpider (page) {
         if (!page) page = this.startPage
+        if (this.isLastPage) return false
         const info = await this.getPageInfo(page)
         const { nextPage, isLastPage } = this.handlePageInfo(info)
         this.nextPage = nextPage
         this.isLastPage = isLastPage
-        if (isLastPage) {
-          clearTimeout(this.parseTask)
+        if (this.isLastPage) {
+          window.clearTimeout(this.parseTask)
           return false
         }
-        this.parseTask = setTimeout(() => {
+        this.parseTask = window.setTimeout(() => {
           this.startPicSpider(this.nextPage)
         }, 3000)
       },
@@ -237,7 +238,8 @@
       }
     },
     beforeDestroy () {
-      clearTimeout(this.parseTask)
+      window.clearTimeout(this.parseTask)
+      this.isLastPage = true
       this.mainWindow.removeListener('resize', this.resize)
       this.mainWindow.removeListener('enter-full-screen', this.resize)
       this.mainWindow.removeListener('leave-full-screen', this.resize)
