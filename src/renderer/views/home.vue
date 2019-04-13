@@ -6,7 +6,7 @@
                     v-for="(v, k) in types"
                     :key="k"
                     @click.native="toggleSelect(k)"
-                    :type="v ? 'default' : 'info'">{{ k }}</el-tag>
+                    :type="v.on ? 'default' : 'info'">{{ k }}</el-tag>
             </div>
             <el-row type="flex" justify="space-between">
                 <el-col :span="17">
@@ -60,16 +60,46 @@ export default {
   data () {
     return {
       types: {
-        'DOUJINSHI': 1,
-        'MANGA': 1,
-        'ARTIST CG': 0,
-        'GAME CG': 0,
-        'WESTERN': 0,
-        'NON-H': 0,
-        'IMAGE SET': 0,
-        'COSPLAY': 0,
-        'ASIAN PORN': 0,
-        'MISC': 0
+        'DOUJINSHI': {
+          value: 2,
+          on: 1
+        },
+        'MANGA': {
+          value: Math.pow(2, 2),
+          on: 1
+        },
+        'ARTIST CG': {
+          value: Math.pow(2, 3),
+          on: 0
+        },
+        'GAME CG': {
+          value: Math.pow(2, 4),
+          on: 0
+        },
+        'WESTERN': {
+          value: Math.pow(2, 5),
+          on: 0
+        },
+        'NON-H': {
+          value: Math.pow(2, 6),
+          on: 0
+        },
+        'IMAGE SET': {
+          value: Math.pow(2, 7),
+          on: 0
+        },
+        'COSPLAY': {
+          value: Math.pow(2, 8),
+          on: 0
+        },
+        'ASIAN PORN': {
+          value: Math.pow(2, 9),
+          on: 0
+        },
+        'MISC': {
+          value: Math.pow(2, 10),
+          on: 0
+        }
       },
       books: [],
       searchKeyWords: 'chinese',
@@ -83,9 +113,9 @@ export default {
     init () {
       for (const k in this.types) {
         if (k === 'DOUJINSHI' || k === 'MANGA') {
-          this.types[k] = 1
+          this.types[k].on = 1
         } else {
-          this.types[k] = 0
+          this.types[k].on = 0
         }
       }
       this.currentPage = 0
@@ -98,7 +128,7 @@ export default {
       this.books.push.apply(this.books, books)
     },
     toggleSelect (k) {
-      this.types[k] = this.types[k] ? 0 : 1
+      this.types[k].on = this.types[k].on ? 0 : 1
     },
     searchBooks (isInit = false) {
       this.loading = true
@@ -112,10 +142,11 @@ export default {
       }).finally(() => { this.loading = false })
     },
     buildSearchParams () {
-      const queryParams = Object.entries(this.types).map(cv => {
-        cv[0] = `f_${cv[0].replace(/\s/g, '').toLowerCase()}`
-        return cv
-      })
+      const queryValue = Object.entries(this.types).filter(cv => cv[1].on).reduce((prev, curr) => {
+        prev -= curr[1].value
+        return prev
+      }, 1023)
+      const queryParams = [[ 'f_cats', queryValue ]]
       if (this.searchKeyWords) {
         this.searchKeyWords = this.searchKeyWords.trim().replace(/\s+/g, ' ')
         queryParams.push(['f_search', this.searchKeyWords])

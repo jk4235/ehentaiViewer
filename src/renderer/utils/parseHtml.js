@@ -46,7 +46,7 @@ export class HomeHtmlParser extends HtmlParser {
   parseHomeHtml () {
     const $ = this.$
     const books = []
-    $('table[class="itg glt"] tr:not(:first-child)').each((index, cv) => {
+    $('table[class="itg gltc"] tr:not(:first-child)').each((index, cv) => {
       const link = $(cv).find('.gl3c a')
       if (link.length === 0) return false
       const detailLink = link.prop('href').split('.org')[1]
@@ -54,7 +54,7 @@ export class HomeHtmlParser extends HtmlParser {
       const coverEl = $(cv).find('.glthumb img')
       let cover = null
       if (coverEl.length) {
-        cover = coverEl.prop('src')
+        cover = coverEl.prop('src').match('data:') ? coverEl.prop('data-src') : coverEl.prop('src')
       } else {
         cover = HomeHtmlParser.getCover($(cv).find('.glthumb').text())
       }
