@@ -14,6 +14,7 @@ export class ReadHtmlParser extends HtmlParser {
   }
   parseReadHtml (page) {
     const $ = this.$
+    const index = Number($('#i2').find('span').eq(0).text()) - 1
     const picLink = $('#img').attr('src')
     const currentPage = page
     const prevPage = $('#prev').attr('href')
@@ -22,6 +23,8 @@ export class ReadHtmlParser extends HtmlParser {
     const lastPage = $('#i4').find('a').eq(3).attr('href')
     const reloadUrl = currentPage + ReadHtmlParser.buildReloadUrl($('#loadfail').prop('onclick').split(' ')[1])
     return {
+      index,
+      currentPage,
       picLink,
       prevPage,
       nextPage,
@@ -50,7 +53,7 @@ export class HomeHtmlParser extends HtmlParser {
       const link = $(cv).find('.gl3c a')
       if (link.length === 0) return false
       const detailLink = link.prop('href').split('.org')[1]
-      let title = $(cv).find('.gl3c a').text()
+      let title = $(cv).find('.gl3c a .glink').text()
       const coverEl = $(cv).find('.glthumb img')
       let cover = null
       if (coverEl.length) {
@@ -61,7 +64,8 @@ export class HomeHtmlParser extends HtmlParser {
       const type = $(cv).find('.gl1c div').text()
       const rate = HomeHtmlParser.countRate($(cv).find('.ir').attr('style'))
       const uploader = $(cv).find('.gl4c a').text()
-      const uploadTime = $(cv).find('.gl2c div').eq(1).text()
+      const uploadTime = $(cv).find('.gl2c div .ir').parent().eq(1).find('div').eq(0).text()
+      const totalPages = $(cv).find('.gl2c div .ir').parent().eq(0).text()
       books.push({
         detailLink,
         cover,
@@ -69,7 +73,8 @@ export class HomeHtmlParser extends HtmlParser {
         type,
         rate,
         uploader,
-        uploadTime
+        uploadTime,
+        totalPages
       })
     })
     return books

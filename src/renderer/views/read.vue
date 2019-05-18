@@ -1,16 +1,25 @@
 <template>
-    <div>
-        <div style="position: absolute; top: 5vh; right: 10vw;z-index: 10"><i v-for="(slide, index) in virtualData.slides" :class="getLoadIconClass(slide)" :style="getLoadIconStyle(slide.status, index)"></i></div>
-        <swiper :options="swiperOption" ref="mySwiper">
-            <swiper-slide v-for="(slide, index) in virtualData.slides" :key="index" :style="imgContainerStyle" class="imgContainer">
-                <img :src="picLink[slide.index] ? picLink[slide.index].picLink : ''" class="page" :key="(new Date()).getTime()" @load="picLoaded(slide)" @error="picLoadError(slide)">
-            </swiper-slide>
-            <div class="swiper-pagination" slot="pagination"></div>
-            <div class="swiper-button-prev" slot="button-prev"></div>
-            <div class="swiper-button-next" slot="button-next"></div>
-        </swiper>
-        <el-button v-if="isFullScreen" style="position: absolute; bottom: 5vh; z-index: 10; right: 5vw" @click="toggleFullScreen"><i class="fa fa-compress"></i></el-button>
+  <div>
+    <div style="position: absolute; top: 5vh; right: 10vw;z-index: 10">
+      <i v-for="(slide, index) in virtualData.slides"
+         :class="getLoadIconClass(slide)"
+         :style="getLoadIconStyle(slide.status, index)"></i>
     </div>
+    <swiper :options="swiperOption" ref="mySwiper">
+      <swiper-slide v-for="(slide, index) in virtualData.slides" :key="index" :style="imgContainerStyle"
+                    class="imgContainer">
+        <img :src="getPicUrl(slide)" class="page" :key="(new Date()).getTime()"
+             @load="picLoaded(slide)" @error="picLoadError(slide)">
+      </swiper-slide>
+      <div class="swiper-pagination" slot="pagination"></div>
+      <div class="swiper-button-prev" slot="button-prev"></div>
+      <div class="swiper-button-next" slot="button-next"></div>
+    </swiper>
+    <el-button
+      v-if="isFullScreen"
+      style="position: absolute; bottom: 5vh; z-index: 10; right: 5vw"
+      @click="toggleFullScreen"><i class="fa fa-compress"></i></el-button>
+  </div>
 </template>
 
 <script>
@@ -18,6 +27,10 @@
   import { swiper, swiperSlide } from 'vue-awesome-swiper'
   import { ReadHtmlParser } from '../utils/parseHtml'
   import { getHtml } from '../api/ehentai'
+  import path from 'path'
+  import { cachePic, isCacheExists } from '@/utils/cachePic'
+  import { dbUpdate } from '@/utils/dbOperate'
+  const fs = require('fs')
 
   export default {
     name: 'read',
@@ -78,38 +91,56 @@
         const html = await getHtml(page)
         return this.parser.parseHtml(html, page)
       },
-      handlePageInfo (info) {
-        const {
-          picLink,
-          nextPage,
-          isLastPage,
-          reloadUrl
-        } = info
-        this.picLink.push({
-          picLink,
-          reloadUrl
+      getPicLink () {
+        this.$db.findOne({ detailLink: this.currentBook.detailLink }, (e, doc) => {
+          this.picLink = (doc && doc.cache) || []
         })
-        return {
-          nextPage,
-          isLastPage,
-          picLink,
-          reloadUrl
-        }
+      },
+      handlePageInfo (info) {
+        const { index } = info
+        this.$set(this.picLink, index, info)
+        return info
       },
       async startPicSpider (page) {
+        let useCache = false
         if (!page) page = this.startPage
         if (this.isLastPage) return false
-        const info = await this.getPageInfo(page)
-        const { nextPage, isLastPage } = this.handlePageInfo(info)
-        this.nextPage = nextPage
-        this.isLastPage = isLastPage
-        if (this.isLastPage) {
-          window.clearTimeout(this.parseTask)
-          return false
-        }
-        this.parseTask = window.setTimeout(() => {
-          this.startPicSpider(this.nextPage)
-        }, 3000)
+        let doc = null
+        let docs = []
+        this.$db.find({ cache: { $exists: true } }, (e, res) => {
+          docs = res
+          if (docs.length > 0) {
+            this.$db.findOne({ 'cache.currentPage': page }, async (e, res) => {
+              doc = res
+              if (doc) {
+                const { nextPage, isLastPage } = doc.cache.find(cv => cv.currentPage === page)
+                this.nextPage = nextPage
+                this.isLastPage = isLastPage
+                useCache = true
+              } else {
+                const info = await this.getPageInfo(page)
+                const { nextPage, isLastPage } = this.handlePageInfo(info)
+                this.nextPage = nextPage
+                this.isLastPage = isLastPage
+              }
+              if (this.isLastPage) {
+                window.clearTimeout(this.parseTask)
+                return false
+              }
+              if (useCache) {
+                await this.startPicSpider(this.nextPage)
+              } else {
+                this.parseTask = window.setTimeout(async () => {
+                  if (this._isDestroyed) {
+                    window.clearTimeout(this.parseTask)
+                    return false
+                  }
+                  await this.startPicSpider(this.nextPage)
+                }, 3000)
+              }
+            })
+          }
+        })
       },
       resize () {
         this.contentHeight = this.isFullScreen ? this.mainWindow.getContentSize()[1] + 51 : this.mainWindow.getContentSize()[1]
@@ -130,19 +161,50 @@
         }
         this.virtualData.slides[this.currentVirtualDataIndex].status = 'loading'
         const info = await this.getPageInfo(this.picLink[index].reloadUrl)
-        const { picLink, reloadUrl } = info
-        this.$set(this.picLink, index, { picLink, reloadUrl })
+        const filePath = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}/${index}.jpg`)
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath)
+        }
+        this.$set(this.picLink, index, info)
       },
       picLoaded (item) {
         item.status = 'loaded'
+        item.cached = 'caching'
+        this.cachePicture(item)
       },
       picLoadError (item) {
         item.status = 'error'
+      },
+      getPicUrl (slide) {
+        const filePath = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}/${slide.index}.jpg`)
+        const target = this.picLink[slide.index]
+        if (target) {
+          if (isCacheExists(filePath) && slide.cached !== 'caching') {
+            return filePath
+          } else {
+            return target.picLink
+          }
+        } else {
+          return ''
+        }
+      },
+      cachePicture (slide) {
+        const filePath = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}/${slide.index}.jpg`)
+        const dirname = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}`)
+        cachePic(this.picLink[slide.index].picLink, filePath, dirname).then((res) => {
+          if (res !== 'caching') slide.cached = 'done'
+        })
       }
     },
     computed: {
       swiper () {
         return this.$refs.mySwiper.swiper
+      },
+      currentBook () {
+        return this.$store.state.bookInfo
+      },
+      dirName () {
+        return this.$store.state.bookInfo.detailLink.split('/').join('_')
       },
       showSlides () {
         return this.virtualData.slides
@@ -206,6 +268,7 @@
       }
     },
     created () {
+      this.getPicLink()
       document.onkeyup = (e) => {
         const key = window.event.keyCode
         if (key === 27) {
@@ -237,6 +300,13 @@
         }
       }
     },
+    beforeRouteLeave (to, from, next) {
+      this.$store.dispatchPromise('UpdateBookInfo', { cache: this.picLink })
+        .then(() => {
+          dbUpdate(this.currentBook)
+        })
+      next()
+    },
     beforeDestroy () {
       window.clearTimeout(this.parseTask)
       this.isLastPage = true
@@ -249,16 +319,18 @@
 </script>
 
 <style scoped>
-    .page {
-        max-width: 100%;
-        max-height: 100%;
-    }
-    .imgContainer {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-    .swiper-container {
-        background-color: black;
-    }
+  .page {
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  .imgContainer {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .swiper-container {
+    background-color: black;
+  }
 </style>

@@ -3,13 +3,13 @@ const home = {
     scrollTop: 0
   },
   mutations: {
-    UPDATE_SCROLLTOP: (state, scrollTop) => {
+    UPDATE_SCROLL_TOP: (state, scrollTop) => {
       state.scrollTop = scrollTop
     }
   },
   actions: {
     UpdateScrollTop ({ commit }, scrollTop) {
-      commit('UPDATE_SCROLLTOP', scrollTop)
+      commit('UPDATE_SCROLL_TOP', scrollTop)
     }
   }
 }

@@ -19,6 +19,19 @@ export const constantRouterMap = [
     ]
   },
   {
+    path: '/',
+    name: 'favourite',
+    redirect: '/favourite',
+    component: layout,
+    children: [
+      {
+        path: 'favourite',
+        component: () => import('@/views/favourite'),
+        meta: {keepAlive: true}
+      }
+    ]
+  },
+  {
     path: '/gallery',
     name: 'gallery',
     component: layout,

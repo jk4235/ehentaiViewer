@@ -38,7 +38,18 @@ function createWindow () {
   })
 }
 
-app.on('ready', createWindow)
+function initApp () {
+  createWindow()
+  if (process.platform !== 'darwin') {
+    try {
+      app.setPath('temp', `E:/${app.getName()}/temp`)
+    } catch (e) {
+      console.log(e)
+    }
+  }
+}
+
+app.on('ready', initApp)
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

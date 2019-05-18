@@ -3,19 +3,19 @@ const navbar = {
     fullScreen: false
   },
   mutations: {
-    TOGGLE_FULLSCREEN: (state) => {
+    TOGGLE_FULL_SCREEN: (state) => {
       state.fullScreen = !state.fullScreen
     },
-    CLOSE_FULLSCREEN: (state) => {
+    CLOSE_FULL_SCREEN: (state) => {
       state.fullScreen = false
     }
   },
   actions: {
     ToggleFullScreen ({ commit }) {
-      commit('TOGGLE_FULLSCREEN')
+      commit('TOGGLE_FULL_SCREEN')
     },
     CloseFullScreen ({ commit }) {
-      commit('CLOSE_FULLSCREEN')
+      commit('CLOSE_FULL_SCREEN')
     }
   }
 }
