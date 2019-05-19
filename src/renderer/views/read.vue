@@ -28,7 +28,7 @@
   import { ReadHtmlParser } from '../utils/parseHtml'
   import { getHtml } from '../api/ehentai'
   import path from 'path'
-  import { cachePic, isCacheExists } from '@/utils/cachePic'
+  import { cachePic, isCacheExists, isCaching } from '@/utils/cachePic'
   import { dbUpdate } from '@/utils/dbOperate'
   const fs = require('fs')
 
@@ -67,7 +67,8 @@
               for (let i = 0; i < self.$route.query.total; i += 1) {
                 slides.push({
                   index: i,
-                  status: 'loading'
+                  status: 'loading',
+                  url: ''
                 })
               }
               return slides
@@ -110,8 +111,8 @@
         this.$db.find({ cache: { $exists: true } }, (e, res) => {
           docs = res
           if (docs.length > 0) {
-            this.$db.findOne({ 'cache.currentPage': page }, async (e, res) => {
-              doc = res
+            this.$db.findOne({ 'cache.currentPage': page }, async (e, ret) => {
+              doc = ret
               if (doc) {
                 const { nextPage, isLastPage } = doc.cache.find(cv => cv.currentPage === page)
                 this.nextPage = nextPage
@@ -169,7 +170,6 @@
       },
       picLoaded (item) {
         item.status = 'loaded'
-        item.cached = 'caching'
         this.cachePicture(item)
       },
       picLoadError (item) {
@@ -179,21 +179,22 @@
         const filePath = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}/${slide.index}.jpg`)
         const target = this.picLink[slide.index]
         if (target) {
-          if (isCacheExists(filePath) && slide.cached !== 'caching') {
-            return filePath
-          } else {
-            return target.picLink
-          }
-        } else {
-          return ''
+          isCaching(target.picLink).then((caching) => {
+            if (caching) {
+              slide.url = target.picLink
+            } else if (isCacheExists(filePath)) {
+              slide.url = filePath
+            } else {
+              slide.url = target.picLink
+            }
+          })
         }
+        return slide.url
       },
       cachePicture (slide) {
         const filePath = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}/${slide.index}.jpg`)
         const dirname = path.resolve(this.$electron.remote.app.getPath('temp'), `./cache/${this.dirName}`)
-        cachePic(this.picLink[slide.index].picLink, filePath, dirname).then((res) => {
-          if (res !== 'caching') slide.cached = 'done'
-        })
+        cachePic(this.picLink[slide.index].picLink, filePath, dirname)
       }
     },
     computed: {
@@ -301,10 +302,8 @@
       }
     },
     beforeRouteLeave (to, from, next) {
-      this.$store.dispatchPromise('UpdateBookInfo', { cache: this.picLink })
-        .then(() => {
-          dbUpdate(this.currentBook)
-        })
+      const data = Object.assign({}, this.currentBook, { cache: this.picLink })
+      dbUpdate(data)
       next()
     },
     beforeDestroy () {

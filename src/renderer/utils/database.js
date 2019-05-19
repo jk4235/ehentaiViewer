@@ -8,5 +8,6 @@ const db = new Datastore({
 })
 
 db.removeIndex('detailLink')
+db.remove({detailLink: '/g/1416953/5070f50b5b/'})
 
 export default db

@@ -1,7 +1,7 @@
 import db from './database'
 
 function shouldNotRemove (item) {
-  return item.length !== 0 || item.isFavourite || item.download.length !== 0
+  return item.cache.length !== 0 || item.isFavourite || item.download.length !== 0
 }
 
 export function dbUpdate (book) {
@@ -11,11 +11,12 @@ export function dbUpdate (book) {
     if (!doc) {
       db.insert(book)
     } else {
-      db.update({ detailLink }, { $set: book }, { upsert: true })
-      db.findOne({ detailLink }, (e, doc) => {
-        if (!shouldNotRemove(doc)) {
-          db.remove({ detailLink })
-        }
+      db.update({ detailLink }, { $set: book }, { upsert: true }, (e) => {
+        db.findOne({ detailLink }, (e, doc) => {
+          if (doc && !shouldNotRemove(doc)) {
+            db.remove({ detailLink })
+          }
+        })
       })
     }
   })

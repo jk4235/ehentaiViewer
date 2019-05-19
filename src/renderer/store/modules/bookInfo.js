@@ -21,8 +21,9 @@ const bookInfo = {
       Object.assign(state, bookInfo)
     },
     CLEAR_BOOK_INFO: (state) => {
-      state = {
+      const raw = {
         detailLink: '',
+        totalPages: 0,
         cover: '',
         title: '',
         type: '',
@@ -37,6 +38,7 @@ const bookInfo = {
         cache: [],
         download: []
       }
+      Object.assign(state, raw)
     }
   },
   actions: {

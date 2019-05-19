@@ -85,7 +85,7 @@
             value: Math.pow(2, 5),
             on: 0
           },
-          'NON-H': {
+          'COSPLAY': {
             value: Math.pow(2, 6),
             on: 0
           },
@@ -93,7 +93,7 @@
             value: Math.pow(2, 7),
             on: 0
           },
-          'COSPLAY': {
+          'NON-H': {
             value: Math.pow(2, 8),
             on: 0
           },
