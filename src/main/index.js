@@ -8,7 +8,9 @@ import '../renderer/store' // if you enabled createSharedMutations() plugin you 
  * https://simulatedgreg.gitbooks.io/electron-vue/content/en/using-static-assets.html
  */
 if (process.env.NODE_ENV !== 'development') {
-  global.__static = require('path').join(__dirname, '/static').replace(/\\/g, '\\\\')
+  global.__static = require('path')
+    .join(__dirname, '/static')
+    .replace(/\\/g, '\\\\')
 }
 
 let mainWindow
@@ -27,7 +29,7 @@ function createWindow () {
     useContentSize: true,
     width: 500,
     minWidth: 500,
-    webPreferences: {webSecurity: !isDev}
+    webPreferences: { webSecurity: !isDev }
   })
 
   mainWindow.loadURL(winURL)
@@ -42,7 +44,7 @@ function initApp () {
   createWindow()
   if (process.platform !== 'darwin') {
     try {
-      app.setPath('temp', `E:/${app.getName()}/temp`)
+      app.setPath('temp', `D:/${app.getName()}/temp`)
     } catch (e) {
       console.log(e)
     }
