@@ -9,7 +9,7 @@
       <swiper-slide v-for="(slide, index) in virtualData.slides" :key="index" :style="imgContainerStyle"
                     class="imgContainer">
         <img :src="getPicUrl(slide)" class="page" :key="(new Date()).getTime()"
-             @load="picLoaded(slide)" @error="picLoadError(slide)">
+             @load="picLoaded(slide)" @error="picLoadError(slide, $event)">
       </swiper-slide>
       <div class="swiper-pagination" slot="pagination"></div>
       <div class="swiper-button-prev" slot="button-prev"></div>
@@ -100,6 +100,7 @@
       handlePageInfo (info) {
         const { index } = info
         this.$set(this.picLink, index, info)
+        this.cachePicture({index})
         return info
       },
       async startPicSpider (page) {
@@ -114,9 +115,10 @@
             this.$db.findOne({ 'cache.currentPage': page }, async (e, ret) => {
               doc = ret
               if (doc) {
-                const { nextPage, isLastPage } = doc.cache.find(cv => cv.currentPage === page)
+                const { nextPage, isLastPage, index } = doc.cache.find(cv => cv.currentPage === page)
                 this.nextPage = nextPage
                 this.isLastPage = isLastPage
+                this.cachePicture({ index })
                 useCache = true
               } else {
                 const info = await this.getPageInfo(page)
@@ -167,12 +169,13 @@
           fs.unlinkSync(filePath)
         }
         this.$set(this.picLink, index, info)
+        this.cachePicture({ index })
       },
       picLoaded (item) {
         item.status = 'loaded'
-        this.cachePicture(item)
+        // this.cachePicture(item)
       },
-      picLoadError (item) {
+      picLoadError (item, e) {
         item.status = 'error'
       },
       getPicUrl (slide) {
@@ -188,6 +191,10 @@
               slide.url = target.picLink
             }
           })
+        } else {
+          if (isCacheExists(filePath)) {
+            slide.url = filePath
+          }
         }
         return slide.url
       },

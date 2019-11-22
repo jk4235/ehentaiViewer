@@ -39,10 +39,16 @@ export function cachePic (url, path, dirname) {
         console.log(err)
         clearTimeout(timeoutId)
         db.remove({ cacheUrl: url })
-        reject(err)
+        if (fs.existsSync(path)) {
+          fs.unlinkSync(path)
+        }
       })
       req.on('timeout', function (e) {
         req.abort()
+        db.remove({ cacheUrl: url })
+        if (fs.existsSync(path)) {
+          fs.unlinkSync(path)
+        }
       })
       timeoutId = setTimeout(() => {
         req.emit('timeout')
@@ -61,6 +67,8 @@ export function isCaching (url) {
     db.findOne({ cacheUrl: url }, (e, doc) => {
       if (doc) {
         isCaching = doc.status === 'caching'
+      } else {
+        isCaching = false
       }
       resolve(isCaching)
     })
