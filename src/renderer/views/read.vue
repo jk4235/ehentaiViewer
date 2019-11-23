@@ -18,7 +18,7 @@
         <img
           :src="getPicUrl(slide)"
           class="page"
-          :key="new Date().getTime()"
+          :key="createUniqueString()"
           @load="picLoaded(slide)"
           @error="picLoadError(slide, $event)"
         />
@@ -42,9 +42,15 @@ import { swiper, swiperSlide } from 'vue-awesome-swiper'
 import { ReadHtmlParser } from '../utils/parseHtml'
 import { getHtml } from '../api/ehentai'
 import path from 'path'
-import { cachePic, isCacheExists, isCaching } from '@/utils/cachePic'
+import {
+  cachePic,
+  isCacheExists,
+  stopRequest,
+  isDownloading
+} from '@/utils/cachePic'
+import { createUniqueString } from '@/utils/helper'
 import { dbUpdate } from '@/utils/dbOperate'
-const fs = require('fs')
+import Event from '@/utils/EventEmitter'
 
 export default {
   name: 'read',
@@ -61,8 +67,6 @@ export default {
       parser: new ReadHtmlParser(),
       virtualData: {},
       swiperOption: {
-        observer: true,
-        observerParents: true,
         pagination: {
           el: '.swiper-pagination',
           type: 'fraction'
@@ -98,7 +102,9 @@ export default {
       nextPage: null,
       isLastPage: false,
       parseTask: null,
-      contentHeight: this.$electron.remote.BrowserWindow.getAllWindows()[0].getContentSize()[1]
+      contentHeight: this.$electron.remote.BrowserWindow.getAllWindows()[0].getContentSize()[1],
+      event: new Event(),
+      createUniqueString
     }
   },
   methods: {
@@ -111,6 +117,7 @@ export default {
         { detailLink: this.currentBook.detailLink },
         (e, doc) => {
           this.picLink = (doc && doc.cache) || []
+          this.event.emit('getPicLinkDone')
         }
       )
     },
@@ -120,16 +127,28 @@ export default {
       this.cachePicture({ index })
       return info
     },
-    async startPicSpider(page) {
-      let useCache = false
+    async handleNoCachePage(page) {
+      const info = await this.getPageInfo(page)
+      const { nextPage, isLastPage } = this.handlePageInfo(info)
+      this.nextPage = nextPage
+      this.isLastPage = isLastPage
+      this.event.emit('startNext')
+    },
+    startPicSpider(page) {
       if (!page) page = this.startPage
       if (this.isLastPage) return false
       let doc = null
       let docs = []
-      this.$db.find({ cache: { $exists: true } }, async (e, res) => {
+      this.$db.find({ cache: { $exists: true } }, (e, res) => {
+        if (e) {
+          console.log(e)
+        }
         docs = res
         if (docs.length > 0) {
-          this.$db.findOne({ 'cache.currentPage': page }, async (e, ret) => {
+          this.$db.findOne({ 'cache.currentPage': page }, (err, ret) => {
+            if (err) {
+              console.log(err)
+            }
             doc = ret
             if (doc) {
               const { nextPage, isLastPage, index } = doc.cache.find(
@@ -138,35 +157,34 @@ export default {
               this.nextPage = nextPage
               this.isLastPage = isLastPage
               this.cachePicture({ index })
-              useCache = true
+              this.event && this.event.emit('startNext', true)
             } else {
-              const info = await this.getPageInfo(page)
-              const { nextPage, isLastPage } = this.handlePageInfo(info)
-              this.nextPage = nextPage
-              this.isLastPage = isLastPage
+              this.event && this.event.emit('noCacheFind', page)
             }
           })
         } else {
-          const info = await this.getPageInfo(page)
-          const { nextPage, isLastPage } = this.handlePageInfo(info)
-          this.nextPage = nextPage
-          this.isLastPage = isLastPage
+          this.event.emit('noCacheFind', page)
         }
+      })
+    },
+    bindEvent() {
+      this.event.once('getPicLinkDone', () => {
+        this.startPicSpider(this.startPage)
+      })
+      this.event.on('noCacheFind', page => {
+        this.handleNoCachePage(page)
+      })
+      this.event.on('startNext', useCache => {
         if (this.isLastPage) {
-          window.clearTimeout(this.parseTask)
           return false
         }
         if (useCache) {
-          await this.startPicSpider(this.nextPage)
-        } else {
-          this.parseTask = window.setTimeout(async () => {
-            if (this._isDestroyed) {
-              window.clearTimeout(this.parseTask)
-              return false
-            }
-            await this.startPicSpider(this.nextPage)
-          }, 3000)
+          this.startPicSpider(this.nextPage)
+          return false
         }
+        this.parseTask = window.setTimeout(() => {
+          this.startPicSpider(this.nextPage)
+        }, 3000)
       })
     },
     resize() {
@@ -194,15 +212,12 @@ export default {
         this.$electron.remote.app.getPath('temp'),
         `./cache/${this.dirName}/${index}.jpg`
       )
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath)
-      }
+      stopRequest(this.picLink[index].picLink, filePath)
       this.$set(this.picLink, index, info)
       this.cachePicture({ index })
     },
     picLoaded(item) {
       item.status = 'loaded'
-      // this.cachePicture(item)
     },
     picLoadError(item, e) {
       item.status = 'error'
@@ -214,15 +229,11 @@ export default {
       )
       const target = this.picLink[slide.index]
       if (target) {
-        isCaching(target.picLink).then(caching => {
-          if (caching) {
-            slide.url = target.picLink
-          } else if (isCacheExists(filePath)) {
-            slide.url = filePath
-          } else {
-            slide.url = target.picLink
-          }
-        })
+        if (isDownloading(target.picLink) || !isCacheExists(filePath)) {
+          slide.url = target.picLink
+        } else {
+          slide.url = filePath
+        }
       } else {
         if (isCacheExists(filePath)) {
           slide.url = filePath
@@ -315,6 +326,7 @@ export default {
     }
   },
   created() {
+    this.bindEvent()
     this.getPicLink()
     document.onkeyup = e => {
       const key = window.event.keyCode
@@ -326,7 +338,6 @@ export default {
     }
   },
   mounted() {
-    this.startPicSpider(this.startPage)
     this.mainWindow.on('resize', this.resize)
     this.mainWindow.on('enter-full-screen', this.resize)
     this.mainWindow.on('leave-full-screen', this.resize)
@@ -353,8 +364,8 @@ export default {
     next()
   },
   beforeDestroy() {
+    this.event = null
     window.clearTimeout(this.parseTask)
-    this.isLastPage = true
     this.mainWindow.removeListener('resize', this.resize)
     this.mainWindow.removeListener('enter-full-screen', this.resize)
     this.mainWindow.removeListener('leave-full-screen', this.resize)

@@ -185,7 +185,7 @@ export default {
     handleScroll() {
       let isScollToBottom = false
       const { scrollHeight, scrollTop, clientHeight } = this.scrollBar
-      isScollToBottom = scrollHeight - scrollTop < clientHeight
+      isScollToBottom = scrollHeight - scrollTop <= clientHeight
       if (isScollToBottom) {
         this.currentPage++
         this.searchBooks()

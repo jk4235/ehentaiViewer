@@ -1,17 +1,19 @@
 import db from './database'
 
-function shouldNotRemove (item) {
-  return item.cache.length !== 0 || item.isFavourite || item.download.length !== 0
+function shouldNotRemove(item) {
+  return (
+    item.cache.length !== 0 || item.isFavourite || item.download.length !== 0
+  )
 }
 
-export function dbUpdate (book) {
+export function dbUpdate(book) {
   const { detailLink } = book
   delete book._id
   db.findOne({ detailLink }, (e, doc) => {
     if (!doc) {
       db.insert(book)
     } else {
-      db.update({ detailLink }, { $set: book }, { upsert: true }, (e) => {
+      db.update({ detailLink }, { $set: book }, { upsert: true }, e => {
         db.findOne({ detailLink }, (e, doc) => {
           if (doc && !shouldNotRemove(doc)) {
             db.remove({ detailLink })
@@ -22,14 +24,14 @@ export function dbUpdate (book) {
   })
 }
 
-export function dbUpdateCacheUrl (cache) {
+export function dbUpdateCacheUrl(cache, cb) {
   const { cacheUrl } = cache
   delete cache._id
   db.findOne({ cacheUrl }, (e, doc) => {
     if (!doc) {
-      db.insert(cache)
+      db.insert(cache, cb)
     } else {
-      db.update({ cacheUrl }, { $set: cache }, { upsert: true })
+      db.update({ cacheUrl }, { $set: cache }, { upsert: true }, cb)
     }
   })
 }
