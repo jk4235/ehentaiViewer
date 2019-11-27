@@ -7,7 +7,8 @@
           :key="k"
           @click.native="toggleSelect(k)"
           :type="v.on ? 'default' : 'info'"
-          >{{ k }}
+        >
+          {{ k }}
         </el-tag>
       </div>
       <el-row type="flex" justify="space-between">
@@ -26,11 +27,12 @@
               class="searchBtn"
               type="primary"
               @click="searchBooks(true)"
-              >搜索</el-button
             >
-            <el-button class="searchBtn" type="danger" @click="init"
-              >清除</el-button
-            >
+              搜索
+            </el-button>
+            <el-button class="searchBtn" type="danger" @click="init">
+              清除
+            </el-button>
           </div>
         </el-col>
       </el-row>
@@ -48,14 +50,17 @@
             <div class="bookTitle">{{ book.title }}</div>
             <div class="uploader">{{ book.uploader }}</div>
             <div class="rate">
-              <el-rate v-model="book.rate" disabled text-color="#ff9900">
-              </el-rate>
+              <el-rate
+                v-model="book.rate"
+                disabled
+                text-color="#ff9900"
+              ></el-rate>
             </div>
             <div class="type">
               <el-tag>{{ book.type.toUpperCase() }}</el-tag>
-              <span class="uploadTime">{{
-                `${book.uploadTime} ${book.totalPages}`
-              }}</span>
+              <span class="uploadTime">
+                {{ `${book.uploadTime} ${book.totalPages}` }}
+              </span>
             </div>
           </div>
         </el-card>

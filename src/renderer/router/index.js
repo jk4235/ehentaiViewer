@@ -14,44 +14,55 @@ export const constantRouterMap = [
       {
         path: 'home',
         component: () => import('@/views/home'),
-        meta: {keepAlive: true}
+        meta: { keepAlive: true }
       }
     ]
   },
   {
-    path: '/',
-    name: 'favourite',
-    redirect: '/favourite',
+    path: '/favourite',
     component: layout,
     children: [
       {
         path: 'favourite',
+        name: 'favourite',
         component: () => import('@/views/favourite'),
-        meta: {keepAlive: true}
+        meta: { keepAlive: true },
+        props: {
+          type: 'favourite'
+        }
+      },
+      {
+        path: 'history',
+        name: 'history',
+        component: () => import('@/views/favourite'),
+        meta: { keepAlive: true },
+        props: {
+          type: 'history'
+        }
       }
     ]
   },
   {
     path: '/gallery',
-    name: 'gallery',
     component: layout,
     children: [
       {
         path: 'index',
+        name: 'gallery',
         component: () => import('@/views/gallery'),
-        meta: {keepAlive: false}
+        meta: { keepAlive: false }
       }
     ]
   },
   {
     path: '/read',
-    name: 'read',
     component: layout,
     children: [
       {
         path: 'index',
+        name: 'read',
         component: () => import('@/views/read'),
-        meta: {keepAlive: false}
+        meta: { keepAlive: false }
       }
     ]
   },

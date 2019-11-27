@@ -2,26 +2,44 @@ import cheerio from 'cheerio'
 
 class HtmlParser {
   $ = null
-  load (html) {
+  load(html) {
     this.$ = cheerio.load(html)
   }
 }
 
 export class ReadHtmlParser extends HtmlParser {
-  parseHtml (html, page) {
+  parseHtml(html, page) {
     this.load(html)
     return this.parseReadHtml(page)
   }
-  parseReadHtml (page) {
+  parseReadHtml(page) {
     const $ = this.$
-    const index = Number($('#i2').find('span').eq(0).text()) - 1
+    const index =
+      Number(
+        $('#i2')
+          .find('span')
+          .eq(0)
+          .text()
+      ) - 1
     const picLink = $('#img').attr('src')
     const currentPage = page
     const prevPage = $('#prev').attr('href')
     const nextPage = $('#next').attr('href')
-    const firstPage = $('#i4').find('a').eq(0).attr('href')
-    const lastPage = $('#i4').find('a').eq(3).attr('href')
-    const reloadUrl = currentPage + ReadHtmlParser.buildReloadUrl($('#loadfail').prop('onclick').split(' ')[1])
+    const firstPage = $('#i4')
+      .find('a')
+      .eq(0)
+      .attr('href')
+    const lastPage = $('#i4')
+      .find('a')
+      .eq(3)
+      .attr('href')
+    const reloadUrl =
+      currentPage +
+      ReadHtmlParser.buildReloadUrl(
+        $('#loadfail')
+          .prop('onclick')
+          .split(' ')[1]
+      )
     return {
       index,
       currentPage,
@@ -30,42 +48,68 @@ export class ReadHtmlParser extends HtmlParser {
       nextPage,
       firstPage,
       lastPage,
-      isFirstPage: prevPage === firstPage,
+      isFirstPage: prevPage === firstPage && index === 0,
       isLastPage: currentPage === lastPage,
       reloadUrl
     }
   }
-  static buildReloadUrl (str) {
+  static buildReloadUrl(str) {
     const param = str.match(/\d.*\d/)[0]
     return `?nl=${param}`
   }
 }
 
 export class HomeHtmlParser extends HtmlParser {
-  parseHtml (html) {
+  parseHtml(html) {
     this.load(html)
     return this.parseHomeHtml()
   }
-  parseHomeHtml () {
+  parseHomeHtml() {
     const $ = this.$
     const books = []
     $('table[class="itg gltc"] tr:not(:first-child)').each((index, cv) => {
       const link = $(cv).find('.gl3c a')
       if (link.length === 0) return false
       const detailLink = link.prop('href').split('.org')[1]
-      let title = $(cv).find('.gl3c a .glink').text()
+      let title = $(cv)
+        .find('.gl3c a .glink')
+        .text()
       const coverEl = $(cv).find('.glthumb img')
       let cover = null
       if (coverEl.length) {
-        cover = coverEl.prop('src').match('data:') ? coverEl.prop('data-src') : coverEl.prop('src')
+        cover = coverEl.prop('src').match('data:')
+          ? coverEl.prop('data-src')
+          : coverEl.prop('src')
       } else {
-        cover = HomeHtmlParser.getCover($(cv).find('.glthumb').text())
+        cover = HomeHtmlParser.getCover(
+          $(cv)
+            .find('.glthumb')
+            .text()
+        )
       }
-      const type = $(cv).find('.gl1c div').text()
-      const rate = HomeHtmlParser.countRate($(cv).find('.ir').attr('style'))
-      const uploader = $(cv).find('.gl4c a').text()
-      const uploadTime = $(cv).find('.gl2c div .ir').parent().eq(1).find('div').eq(0).text()
-      const totalPages = $(cv).find('.gl2c div .ir').parent().eq(0).text()
+      const type = $(cv)
+        .find('.gl1c div')
+        .text()
+      const rate = HomeHtmlParser.countRate(
+        $(cv)
+          .find('.ir')
+          .attr('style')
+      )
+      const uploader = $(cv)
+        .find('.gl4c a')
+        .text()
+      const uploadTime = $(cv)
+        .find('.gl2c div .ir')
+        .parent()
+        .eq(1)
+        .find('div')
+        .eq(0)
+        .text()
+      const totalPages = $(cv)
+        .find('.gl2c div .ir')
+        .parent()
+        .eq(0)
+        .text()
       books.push({
         detailLink,
         cover,
@@ -79,9 +123,13 @@ export class HomeHtmlParser extends HtmlParser {
     })
     return books
   }
-  static countRate (rateStr) {
+  static countRate(rateStr) {
     let rate = 5
-    const [num1, num2] = rateStr.split(';')[0].slice(20).split(' ').map(cv => cv.replace('px', ''))
+    const [num1, num2] = rateStr
+      .split(';')[0]
+      .slice(20)
+      .split(' ')
+      .map(cv => cv.replace('px', ''))
     rate = rate + Number(num1) / 16
     if (num2 === '-21') {
       rate--
@@ -89,19 +137,22 @@ export class HomeHtmlParser extends HtmlParser {
     }
     return rate
   }
-  static getCover (str) {
+  static getCover(str) {
     const a = str.split('~', 4)
-    return a[0] === 'init' ? `http://${a[1]}/${a[2]}` : `https://${a[1]}/${a[2]}`
+    return a[0] === 'init'
+      ? `http://${a[1]}/${a[2]}`
+      : `https://${a[1]}/${a[2]}`
   }
 }
 
 export class GalleryHtmlParser extends HtmlParser {
-  parseHtml (html) {
+  parseHtml(html) {
     this.load(html)
     return this._getInfo()
   }
-  _getInfo () {
-    const offensiveString = '(And if you choose to ignore this warning, you lose all rights to complain about it.)'
+  _getInfo() {
+    const offensiveString =
+      '(And if you choose to ignore this warning, you lose all rights to complain about it.)'
     const piningString = 'This gallery is pining for the fjords.'
 
     const isOffensive = this.$(`p:contains(${offensiveString})`).length > 0
@@ -112,8 +163,12 @@ export class GalleryHtmlParser extends HtmlParser {
     }
 
     if (isOffensive) {
-      const viewLink = this.$('a:contains("View Gallery")').prop('href').split('.org')[1]
-      const ignoreLink = this.$('a:contains("Never Warn Me Again")').prop('href').split('.org')[1]
+      const viewLink = this.$('a:contains("View Gallery")')
+        .prop('href')
+        .split('.org')[1]
+      const ignoreLink = this.$('a:contains("Never Warn Me Again")')
+        .prop('href')
+        .split('.org')[1]
       return {
         isOffensive,
         viewLink,
@@ -123,7 +178,7 @@ export class GalleryHtmlParser extends HtmlParser {
 
     return this._parseGalleryHtml()
   }
-  _parseGalleryHtml () {
+  _parseGalleryHtml() {
     const bookDetailInfo = this.parseDetailInfo(this.$('#gdd'))
     const rateDetailInfo = this.parseRateInfo()
     const tagGroupInfo = this.getGalleryTagGroup()
@@ -135,12 +190,15 @@ export class GalleryHtmlParser extends HtmlParser {
       previewInfo
     }
   }
-  findDetailText (el, keyword) {
-    return el.find('td').filter(
-      (i, cv) => this.$(cv).text() === `${keyword}:`
-    ).next().text().trim()
+  findDetailText(el, keyword) {
+    return el
+      .find('td')
+      .filter((i, cv) => this.$(cv).text() === `${keyword}:`)
+      .next()
+      .text()
+      .trim()
   }
-  parseDetailInfo (el) {
+  parseDetailInfo(el) {
     const language = this.findDetailText(el, 'Language')
     const fileSize = this.findDetailText(el, 'File Size')
     const length = this.findDetailText(el, 'Length')
@@ -168,23 +226,34 @@ export class GalleryHtmlParser extends HtmlParser {
       favoriteCount
     }
   }
-  parseRateInfo () {
-    const peopleCount = this.$('#rating_count').text().trim()
-    const average = this.$('#rating_label').text().trim().split(' ')[1]
+  parseRateInfo() {
+    const peopleCount = this.$('#rating_count')
+      .text()
+      .trim()
+    const average = this.$('#rating_label')
+      .text()
+      .trim()
+      .split(' ')[1]
     return {
       peopleCount,
       average
     }
   }
-  parseTagGroup (el) {
+  parseTagGroup(el) {
     const group = {
       groupName: null,
       tagList: []
     }
-    let nameSpace = this.$(el).find('td').eq(0).text()
+    let nameSpace = this.$(el)
+      .find('td')
+      .eq(0)
+      .text()
     nameSpace = nameSpace.substring(0, nameSpace.length - 1)
     group.groupName = nameSpace
-    const tags = this.$(el).find('td').eq(1).children()
+    const tags = this.$(el)
+      .find('td')
+      .eq(1)
+      .children()
     for (let i = 0, n = tags.length; i < n; i++) {
       let tag = tags.eq(i).text()
       const index = tag.indexOf('|')
@@ -195,7 +264,7 @@ export class GalleryHtmlParser extends HtmlParser {
     }
     return group.tagList.length > 0 ? group : null
   }
-  getGalleryTagGroup () {
+  getGalleryTagGroup() {
     const tagList = this.$('#taglist')
     const tagGroups = tagList.find('tr')
     const tagGroupList = []
@@ -207,16 +276,23 @@ export class GalleryHtmlParser extends HtmlParser {
     }
     return tagGroupList
   }
-  parsePreview () {
+  parsePreview() {
     const $ = this.$
-    const pagesTitle = $('.ptt').prev().text()
+    const pagesTitle = $('.ptt')
+      .prev()
+      .text()
     const totalPages = pagesTitle.match(/f\s\d+/)[0].split(' ')[1]
     const currentShowPages = pagesTitle.match(/-\s\d+/)[0].split(' ')[1]
     const previewPicList = $('#gdt').children()
     const previewPicLink = []
     previewPicList.each((index, cv) => {
-      const picLink = $(cv).find('a').attr('href')
-      const largePicStyle = $(cv).children().first().attr('style')
+      const picLink = $(cv)
+        .find('a')
+        .attr('href')
+      const largePicStyle = $(cv)
+        .children()
+        .first()
+        .attr('style')
       let largePicUrl = null
       if (largePicStyle) {
         largePicUrl = largePicStyle.match(/http.*jpg/)[0]

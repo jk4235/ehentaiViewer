@@ -1,3 +1,4 @@
+import moment from 'moment'
 const bookInfo = {
   state: {
     detailLink: '',
@@ -14,13 +15,16 @@ const bookInfo = {
     favoriteCount: '0',
     isFavourite: false,
     cache: [],
-    download: []
+    download: [],
+    readTime: ''
   },
   mutations: {
     UPDATE_BOOK_INFO: (state, bookInfo) => {
-      Object.assign(state, bookInfo)
+      Object.assign(state, bookInfo, {
+        readTime: moment().format('YYYY-MM-DD HH:mm:ss')
+      })
     },
-    CLEAR_BOOK_INFO: (state) => {
+    CLEAR_BOOK_INFO: state => {
       const raw = {
         detailLink: '',
         totalPages: 0,
@@ -36,16 +40,17 @@ const bookInfo = {
         favoriteCount: '0',
         isFavourite: false,
         cache: [],
-        download: []
+        download: [],
+        readTime: ''
       }
       Object.assign(state, raw)
     }
   },
   actions: {
-    UpdateBookInfo ({ commit }, bookInfo) {
+    UpdateBookInfo({ commit }, bookInfo) {
       commit('UPDATE_BOOK_INFO', bookInfo)
     },
-    ClearBookInfo ({ commit }) {
+    ClearBookInfo({ commit }) {
       commit('CLEAR_BOOK_INFO')
     }
   }
