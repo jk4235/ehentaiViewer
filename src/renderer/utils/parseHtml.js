@@ -67,9 +67,17 @@ export class HomeHtmlParser extends HtmlParser {
   parseHomeHtml() {
     const $ = this.$
     const books = []
+    const totalResults = Number(
+      $('p[class="ip"]')
+        .eq(0)
+        .text()
+        .split(' ')[1]
+        .replace(/,/g, '')
+    )
+    const totalResultPages = Math.ceil(totalResults / 25)
     $('table[class="itg gltc"] tr:not(:first-child)').each((index, cv) => {
       const link = $(cv).find('.gl3c a')
-      if (link.length === 0) return false
+      if (link.length === 0) return true
       const detailLink = link.prop('href').split('.org')[1]
       let title = $(cv)
         .find('.gl3c a .glink')
@@ -121,7 +129,7 @@ export class HomeHtmlParser extends HtmlParser {
         totalPages
       })
     })
-    return books
+    return { books, totalResults, totalResultPages }
   }
   static countRate(rateStr) {
     let rate = 5

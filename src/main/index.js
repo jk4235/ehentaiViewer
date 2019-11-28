@@ -19,7 +19,7 @@ const winURL = isDev
   ? `http://localhost:9080`
   : `file://${__dirname}/index.html`
 
-function createWindow () {
+function createWindow() {
   /**
    * Initial window options
    */
@@ -40,11 +40,13 @@ function createWindow () {
   })
 }
 
-function initApp () {
+function initApp() {
   createWindow()
   if (process.platform !== 'darwin') {
     try {
-      app.setPath('temp', `D:/${app.getName()}/temp`)
+      isDev
+        ? app.setPath('temp', `D:/${app.getName()}/temp`)
+        : app.setPath('temp', `${__dirname}/temp`)
     } catch (e) {
       console.log(e)
     }

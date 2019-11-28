@@ -66,6 +66,19 @@
         </el-card>
       </el-main>
     </el-scrollbar>
+    <div class="jumper" tabindex="0">
+      <el-input
+        @change="jumpPage"
+        :disabled="loading"
+        :value="showPage"
+        @input="handleInput"
+        type="number"
+        :max="totalResultPages"
+        :min="1"
+      >
+        <template slot="append">{{ `/${totalResultPages}` }}</template>
+      </el-input>
+    </div>
   </el-container>
 </template>
 
@@ -125,7 +138,14 @@ export default {
       loading: false,
       scrollBar: null,
       currentPage: 0,
-      parser: new HomeHtmlParser()
+      startPage: 0,
+      parser: new HomeHtmlParser(),
+      totalResultPages: 0
+    }
+  },
+  computed: {
+    showPage() {
+      return this.currentPage + 1
     }
   },
   methods: {
@@ -138,31 +158,53 @@ export default {
         }
       }
       this.currentPage = 0
+      this.startPage = 0
       this.searchKeyWords = 'chinese'
       this.books = []
       this.searchBooks()
     },
-    parseHtml(html) {
-      const books = this.parser.parseHtml(html)
-      this.books.push.apply(this.books, books)
+    parseHtml(html, isBefore) {
+      const { books, totalResultPages } = this.parser.parseHtml(html)
+      this.totalResultPages = totalResultPages
+      if (isBefore) {
+        this.books.unshift(...books)
+      } else {
+        this.books.push(...books)
+      }
+    },
+    handleInput(value) {
+      if (!value || parseInt(value) === 0) {
+        this.currentPage = 0
+      } else if (parseInt(value) > this.totalResultPages) {
+        this.currentPage = this.totalResultPages - 1
+      } else {
+        this.currentPage = parseInt(value) - 1
+      }
+    },
+    jumpPage() {
+      this.books = []
+      this.startPage = this.currentPage
+      this.searchBooks()
     },
     toggleSelect(k) {
       this.types[k].on = this.types[k].on ? 0 : 1
     },
-    searchBooks(isInit = false) {
+    async searchBooks(isInit = false, isBefore = false) {
       this.loading = true
       if (isInit) {
         this.books = []
+        this.startPage = 0
         this.currentPage = 0
       }
       const queryParams = this.buildSearchParams()
-      getListData(queryParams)
-        .then(res => {
-          this.parseHtml(res)
-        })
-        .finally(() => {
-          this.loading = false
-        })
+      try {
+        const res = await getListData(queryParams)
+        this.parseHtml(res, isBefore)
+        this.loading = false
+      } catch (e) {
+        this.loading = false
+        throw e
+      }
     },
     buildSearchParams() {
       const queryValue = Object.entries(this.types)
@@ -187,14 +229,39 @@ export default {
         return prev
       }, {})
     },
-    handleScroll() {
+    async handleScroll() {
+      if (this.loading) return
       let isScollToBottom = false
+      let isScollToTop = false
       const { scrollHeight, scrollTop, clientHeight } = this.scrollBar
+      this.currentPage =
+        this.startPage +
+        Math.floor(Math.floor(scrollTop + 800 - 1) / (189 * 25))
+      isScollToTop = scrollTop === 0
       isScollToBottom = scrollHeight - scrollTop <= clientHeight
       if (isScollToBottom) {
-        this.currentPage++
-        this.searchBooks()
-        this.$refs.mainScrollbar.update()
+        try {
+          this.currentPage++
+          await this.searchBooks()
+        } catch (error) {
+          this.currentPage--
+        }
+      }
+      if (isScollToTop) {
+        if (this.currentPage === 0) return
+        try {
+          this.currentPage--
+          this.startPage--
+          await this.searchBooks(false, true)
+        } catch (error) {
+          this.currentPage++
+          this.startPage++
+        }
+      }
+      this.$refs.mainScrollbar.update()
+      if (isScollToTop) {
+        await this.$nextTick()
+        this.scrollBar.scrollTo(0, 189 * 24)
       }
     },
     handleClick(book) {
@@ -240,7 +307,7 @@ export default {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .typeSelect {
   margin: auto;
   display: flex;
@@ -312,5 +379,21 @@ export default {
 .rate {
   margin-top: 5px;
   flex-grow: 2;
+}
+.jumper {
+  position: fixed;
+  bottom: 50px;
+  right: 10px;
+  transition: all 0.2s;
+  opacity: 0.5;
+  outline: 0;
+  /deep/ input {
+    width: 100px;
+  }
+}
+.jumper:focus,
+.jumper:active,
+.jumper:hover {
+  opacity: 1;
 }
 </style>

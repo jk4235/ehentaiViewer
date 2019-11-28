@@ -20,8 +20,12 @@
             ></el-rate>
           </div>
           <div class="type">
-            <el-tag>{{ book.type.toUpperCase() }}</el-tag>
-            <span class="uploadTime">{{ book.uploadTime }}</span>
+            <el-tag>
+              {{ book.type ? book.type.toUpperCase() : 'UNKNOWN' }}
+            </el-tag>
+            <span class="uploadTime">
+              {{ `${book.uploadTime} ${book.totalPages}` }}
+            </span>
           </div>
         </div>
       </el-card>
@@ -42,7 +46,10 @@ export default {
   data() {
     return {
       books: [],
-      scrollBar: null
+      scrollBar: null,
+      pageSize: 20,
+      currentPage: 0,
+      sortRule: { readTime: -1 }
     }
   },
   computed: {
@@ -76,17 +83,34 @@ export default {
       }
       this.$db
         .find(condition)
-        .sort({ readTime: -1 })
+        .sort(this.sortRule)
+        .skip(this.pageSize * this.currentPage)
+        .limit(this.pageSize)
         .exec((e, docs) => {
-          this.books = docs
+          if (docs) {
+            this.books.push(...docs)
+          }
         })
+    },
+    handleScroll() {
+      let isScollToBottom = false
+      const { scrollHeight, scrollTop, clientHeight } = this.scrollBar
+      isScollToBottom = scrollHeight - scrollTop <= clientHeight
+      if (isScollToBottom) {
+        this.currentPage++
+        this.searchBooks()
+        this.$refs.mainScrollbar.update()
+      }
     }
   },
   mounted() {
-    this.searchBooks()
     this.scrollBar = this.$refs.mainScrollbar.$el.querySelector(
       '.el-scrollbar__wrap'
     )
+    this.scrollBar.addEventListener('scroll', this.handleScroll)
+  },
+  beforeDestroy() {
+    this.scrollBar.removeEventListener('scroll', this.handleScroll)
   },
   beforeRouteLeave(to, from, next) {
     this.$store.dispatch('UpdateFScrollTop', this.scrollBar.scrollTop)
@@ -99,6 +123,8 @@ export default {
   watch: {
     type: {
       handler: function() {
+        this.books = []
+        this.currentPage = 0
         this.searchBooks()
       },
       immediate: true

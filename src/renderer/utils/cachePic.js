@@ -32,6 +32,7 @@ export function cachePic(url, path, dirname) {
           {
             cacheUrl: url,
             status: 'caching',
+            dirname,
             timeStamp: new Date().getTime()
           },
           () => {
@@ -63,6 +64,7 @@ event.on('changeStatusToCaching', (url, path, dirname) => {
       {
         cacheUrl: url,
         status: 'done',
+        dirname,
         timeStamp: new Date().getTime()
       },
       () => {
