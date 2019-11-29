@@ -45,7 +45,7 @@
           :key="book.cover + index"
           @click.native="handleClick(book)"
         >
-          <div class="cover"><img :src="book.cover" /></div>
+          <div class="cover"><img v-lazy="book.cover" /></div>
           <div class="bookInfo">
             <div class="bookTitle">{{ book.title }}</div>
             <div class="uploader">{{ book.uploader }}</div>

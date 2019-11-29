@@ -7,6 +7,31 @@ class HtmlParser {
   }
 }
 
+export class CommentParser extends HtmlParser {
+  parseHtml(html) {
+    this.load(html)
+    return this.parseComment()
+  }
+  parseComment() {
+    const $ = this.$
+    const commentList = []
+    const hasMore = $('#chd p').length > 1
+    $('#cdiv .c1').each((index, cv) => {
+      const author = $(cv).find('a').eq(0).text()
+      const content = $(cv).find('.c6').eq(0).text()
+      const score = $(cv).find('.c5 span').eq(0).text()
+      const commentTime = $(cv).find('.c3').eq(0).text().match(/\d+.*:\d+/)[0]
+      commentList.push({
+        author,
+        content,
+        score,
+        commentTime
+      })
+    })
+    return { commentList, hasMore }
+  }
+}
+
 export class ReadHtmlParser extends HtmlParser {
   parseHtml(html, page) {
     this.load(html)

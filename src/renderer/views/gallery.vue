@@ -98,6 +98,33 @@
           </el-tag>
         </div>
       </div>
+      <div class="commentContainer">
+        <el-card class="comment" v-for="( comment, index) in commentList" :key="index" shadow="hover">
+          <div>{{ comment.content }}</div>
+          <div class="commentInfo">
+            <span>{{ comment.author }}</span>
+            <span>{{ comment.commentTime }}</span>
+            <span v-if="comment.score">{{ parseInt(comment.score) >=0 ? '👍': '👎' }}</span>
+            <span v-else>📢</span>
+            <span>{{ comment.score }}</span>
+          </div>
+        </el-card>
+      </div>
+      <div>
+        <el-button
+          v-show="!detailLoading"
+          type="text"
+          style="width: 100%"
+          @click="getAllComment"
+          :disabled="!hasMore"
+        >
+          {{
+          hasMore
+          ? '加载全部评论'
+          : '已加载全部评论'
+          }}
+        </el-button>
+      </div>
       <div class="prevContainer">
         <div v-for="(item, index) in prevPics" :key="index" class="previewBox">
           <div :style="getPrevStyle(item)">
@@ -126,7 +153,7 @@
 
 <script>
 import { getHtml } from '../api/ehentai'
-import { GalleryHtmlParser } from '../utils/parseHtml'
+import { GalleryHtmlParser, CommentParser } from '../utils/parseHtml'
 import { dbUpdate } from '@/utils/dbOperate'
 
 export default {
@@ -157,7 +184,10 @@ export default {
         prevInfo: []
       },
       currentPrev: 0,
-      parser: new GalleryHtmlParser()
+      commentList: [],
+      hasMore: false,
+      parser: new GalleryHtmlParser(),
+      commentParser: new CommentParser()
     }
   },
   computed: {
@@ -202,6 +232,7 @@ export default {
       const detailLink = link || this.$route.query.link
       const res = await getHtml(detailLink)
       this.handleHtmlParse(res)
+      this.handleCommentParse(res)
     },
     async handleHtmlParse(res) {
       const val = this.parser.parseHtml(res)
@@ -242,6 +273,11 @@ export default {
         this.handleDetailData(val)
       }
     },
+    handleCommentParse(res) {
+      const { commentList, hasMore } = this.commentParser.parseHtml(res)
+      this.commentList = commentList
+      this.hasMore = hasMore
+    },
     handleDetailData(data) {
       const { bookDetailInfo, rateDetailInfo, tagGroupInfo, previewInfo } = data
       this.$store.dispatch('UpdateBookInfo', bookDetailInfo)
@@ -278,6 +314,11 @@ export default {
     getPrevPic() {
       const link = this.$route.query.link + `?p=${this.currentPrev + 1}`
       this.getGalleryInfo(link)
+    },
+    getAllComment() {
+      const link = this.$route.query.link + '?hc=1#comments'
+      this.getGalleryInfo(link)
+      this.hasMore = false
     },
     toggleFavourite() {
       this.$store
@@ -376,5 +417,15 @@ export default {
 .previewBox {
   margin: 1vh;
   border: 1px solid;
+}
+
+.comment {
+  margin-bottom: 5px;
+}
+
+.commentInfo {
+  font-size: small;
+  margin-top: 5px;
+  color: #606266;
 }
 </style>
