@@ -45,7 +45,7 @@ function initApp() {
   if (process.platform !== 'darwin') {
     try {
       isDev
-        ? app.setPath('temp', `D:/${app.getName()}/temp`)
+        ? app.setPath('temp', `E:/${app.getName()}/temp`)
         : app.setPath('temp', `${__dirname}/temp`)
     } catch (e) {
       console.log(e)

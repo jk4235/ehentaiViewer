@@ -11,7 +11,7 @@
     <swiper :options="swiperOption" ref="mySwiper">
       <swiper-slide
         v-for="(slide, index) in virtualData.slides"
-        :key="index"
+        :key="slide.index"
         :style="imgContainerStyle"
         class="imgContainer"
       >
@@ -46,6 +46,7 @@ import {
   cachePic,
   isCacheExists,
   stopRequest,
+  clearRequestQueue,
   isDownloading
 } from '@/utils/cachePic'
 import { createUniqueString } from '@/utils/helper'
@@ -132,7 +133,7 @@ export default {
       const { nextPage, isLastPage } = this.handlePageInfo(info)
       this.nextPage = nextPage
       this.isLastPage = isLastPage
-      this.event.emit('startNext')
+      this.event && this.event.emit('startNext')
     },
     startPicSpider(page) {
       if (!page) page = this.startPage
@@ -228,18 +229,29 @@ export default {
         `./cache/${this.dirName}/${slide.index}.jpg`
       )
       const target = this.picLink[slide.index]
+      let url = slide.url
       if (target) {
         if (isDownloading(target.picLink) || !isCacheExists(filePath)) {
-          slide.url = target.picLink
+          url = target.picLink
         } else {
-          slide.url = filePath
+          url = this.genFilePath(slide, filePath)
         }
       } else {
         if (isCacheExists(filePath)) {
-          slide.url = filePath
+          url = this.genFilePath(slide, filePath)
         }
       }
-      return slide.url
+      return url
+    },
+    genFilePath(slide, path) {
+      let url = ''
+      if (!slide.url || !slide.url.match('tempkey=')) {
+        slide.url = path + `?tempkey=${createUniqueString()}`
+        url = slide.url
+      } else {
+        url = slide.url
+      }
+      return url
     },
     cachePicture(slide) {
       const filePath = path.resolve(
@@ -366,6 +378,7 @@ export default {
   beforeDestroy() {
     this.event = null
     window.clearTimeout(this.parseTask)
+    clearRequestQueue()
     this.mainWindow.removeListener('resize', this.resize)
     this.mainWindow.removeListener('enter-full-screen', this.resize)
     this.mainWindow.removeListener('leave-full-screen', this.resize)
