@@ -307,7 +307,7 @@ export default {
 }
 </script>
 
-<style scoped lang="scss">
+<style scoped>
 .typeSelect {
   margin: auto;
   display: flex;
@@ -387,10 +387,11 @@ export default {
   transition: all 0.2s;
   opacity: 0.5;
   outline: 0;
-  /deep/ input {
-    width: 100px;
-  }
 }
+.jumper >>> input {
+  width: 100px;
+}
+
 .jumper:focus,
 .jumper:active,
 .jumper:hover {

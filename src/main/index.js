@@ -34,6 +34,7 @@ function createWindow() {
 
   mainWindow.loadURL(winURL)
   mainWindow.setMenu(null)
+  // mainWindow.webContents.openDevTools()
 
   mainWindow.on('closed', () => {
     mainWindow = null
@@ -46,7 +47,7 @@ function initApp() {
     try {
       isDev
         ? app.setPath('temp', `E:/${app.getName()}/temp`)
-        : app.setPath('temp', `${__dirname}/temp`)
+        : app.setPath('temp', require('path').resolve(__dirname, '../../../temp'))
     } catch (e) {
       console.log(e)
     }

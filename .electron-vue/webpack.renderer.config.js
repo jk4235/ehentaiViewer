@@ -46,11 +46,21 @@ let rendererConfig = {
       },
       {
         test: /\.scss$/,
-        use: ['vue-style-loader', 'css-loader', 'sass-loader']
+        use: ['vue-style-loader', 'css-loader', {
+          loader: "sass-loader",
+          options: {
+            implementation: require('dart-sass')
+          }
+        },]
       },
       {
         test: /\.sass$/,
-        use: ['vue-style-loader', 'css-loader', 'sass-loader?indentedSyntax']
+        use: ['vue-style-loader', 'css-loader', {
+          loader: "sass-loader",
+          options: {
+            implementation: require('dart-sass')
+          }
+        },]
       },
       {
         test: /\.less$/,
